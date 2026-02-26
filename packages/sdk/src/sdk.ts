@@ -72,22 +72,96 @@ export class L2ConceptSdk {
       version: '1.0.0',
       name: 'l2conceptv1',
       instructions: [
-        { name: 'initialize', accounts: [], args: [] },
+        {
+          name: 'initialize',
+          accounts: [],
+          args: [{ name: 'delegationProgramId', type: { option: 'publicKey' } }],
+        },
         { name: 'join', accounts: [], args: [] },
-        { name: 'completeSetup', accounts: [], args: [] },
+        {
+          name: 'completeSetup',
+          accounts: [],
+          args: [{ name: 'additionalMints', type: { vec: 'publicKey' } }],
+        },
         { name: 'addMint', accounts: [], args: [] },
-        { name: 'deposit', accounts: [], args: [] },
-        { name: 'transferBatch', accounts: [], args: [] },
-        { name: 'externalSendBatch', accounts: [], args: [] },
-        { name: 'withdraw', accounts: [], args: [] },
-        { name: 'delegateUserStateAndBalances', accounts: [], args: [] },
-        { name: 'commitAndUndelegateUserStateAndBalances', accounts: [], args: [] },
+        { name: 'deposit', accounts: [], args: [{ name: 'amount', type: 'u64' }] },
+        {
+          name: 'transferBatch',
+          accounts: [],
+          args: [{ name: 'items', type: { vec: { defined: 'TransferItem' } } }],
+        },
+        {
+          name: 'externalSendBatch',
+          accounts: [],
+          args: [{ name: 'items', type: { vec: { defined: 'TransferItem' } } }],
+        },
+        { name: 'withdraw', accounts: [], args: [{ name: 'amount', type: 'u64' }] },
+        {
+          name: 'delegateUserStateAndBalances',
+          accounts: [],
+          args: [{ name: 'mintList', type: { vec: 'publicKey' } }],
+        },
+        {
+          name: 'commitAndUndelegateUserStateAndBalances',
+          accounts: [],
+          args: [{ name: 'mintList', type: { vec: 'publicKey' } }],
+        },
       ],
       accounts: [
-        { name: 'Config', type: { kind: 'struct', fields: [] } },
-        { name: 'UserState', type: { kind: 'struct', fields: [] } },
-        { name: 'UserBalance', type: { kind: 'struct', fields: [] } },
-        { name: 'VaultAuthority', type: { kind: 'struct', fields: [] } },
+        {
+          name: 'Config',
+          type: {
+            kind: 'struct',
+            fields: [
+              { name: 'admin', type: 'publicKey' },
+              { name: 'delegationProgramId', type: 'publicKey' },
+              { name: 'bump', type: 'u8' },
+            ],
+          },
+        },
+        {
+          name: 'UserState',
+          type: {
+            kind: 'struct',
+            fields: [
+              { name: 'owner', type: 'publicKey' },
+              { name: 'bump', type: 'u8' },
+              { name: 'stateVersion', type: 'u64' },
+            ],
+          },
+        },
+        {
+          name: 'UserBalance',
+          type: {
+            kind: 'struct',
+            fields: [
+              { name: 'owner', type: 'publicKey' },
+              { name: 'mint', type: 'publicKey' },
+              { name: 'bump', type: 'u8' },
+              { name: 'amount', type: 'u64' },
+              { name: 'version', type: 'u64' },
+            ],
+          },
+        },
+        {
+          name: 'VaultAuthority',
+          type: {
+            kind: 'struct',
+            fields: [{ name: 'bump', type: 'u8' }],
+          },
+        },
+      ],
+      types: [
+        {
+          name: 'TransferItem',
+          type: {
+            kind: 'struct',
+            fields: [
+              { name: 'toOwner', type: 'publicKey' },
+              { name: 'amount', type: 'u64' },
+            ],
+          },
+        },
       ],
       errors: [
         { code: 6000, name: 'NotInitialized' },
