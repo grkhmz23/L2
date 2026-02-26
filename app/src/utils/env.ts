@@ -10,29 +10,20 @@ export interface EnvConfig {
   L2CONCEPTV1_PROGRAM_ID: string;
 }
 
-function getEnvVar(key: string, defaultValue?: string): string | null {
-  const value = process.env[key];
-  if (value) return value;
-  if (defaultValue !== undefined) return defaultValue;
-  return null;
-}
-
-function requireEnvVar(key: string, defaultValue?: string): string {
-  const value = getEnvVar(key, defaultValue);
-  if (!value) {
-    throw new Error(`Required environment variable ${key} is not set`);
-  }
-  return value;
-}
+// IMPORTANT: use direct process.env access so Next.js can inline NEXT_PUBLIC_* values
+// into the client bundle. Dynamic access (process.env[key]) can fall back to defaults
+// in production browser builds.
+const SOLANA_RPC_URL_ENV = process.env.NEXT_PUBLIC_SOLANA_RPC_URL;
+const MAGICBLOCK_RPC_URL_ENV = process.env.NEXT_PUBLIC_MAGICBLOCK_RPC_URL;
+const MAGIC_ROUTER_URL_ENV = process.env.NEXT_PUBLIC_MAGIC_ROUTER_URL;
+const PROGRAM_ID_ENV = process.env.NEXT_PUBLIC_L2CONCEPTV1_PROGRAM_ID;
 
 export const env: EnvConfig = {
-  SOLANA_RPC_URL: requireEnvVar('NEXT_PUBLIC_SOLANA_RPC_URL', 'http://127.0.0.1:8899'),
-  MAGICBLOCK_RPC_URL: getEnvVar('NEXT_PUBLIC_MAGICBLOCK_RPC_URL'),
-  MAGIC_ROUTER_URL: getEnvVar('NEXT_PUBLIC_MAGIC_ROUTER_URL'),
-  L2CONCEPTV1_PROGRAM_ID: requireEnvVar(
-    'NEXT_PUBLIC_L2CONCEPTV1_PROGRAM_ID',
-    'L2CnccKT1qHNS1wJ7p3wJ3JhCX5s4J5wT5x3h5mH2j1'
-  ),
+  SOLANA_RPC_URL: SOLANA_RPC_URL_ENV || 'http://127.0.0.1:8899',
+  MAGICBLOCK_RPC_URL: MAGICBLOCK_RPC_URL_ENV || null,
+  MAGIC_ROUTER_URL: MAGIC_ROUTER_URL_ENV || null,
+  L2CONCEPTV1_PROGRAM_ID:
+    PROGRAM_ID_ENV || 'L2CnccKT1qHNS1wJ7p3wJ3JhCX5s4J5wT5x3h5mH2j1',
 };
 
 // Validate that program ID is a valid public key
