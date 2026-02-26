@@ -24,6 +24,7 @@ import {
   CommitUndelegateParams,
   TransactionResult,
   BatchTransferInput,
+  DelegationStatus,
   DEFAULT_UPDATE_FREQUENCY_MS,
   DEFAULT_TTL_SECONDS,
   MAX_BATCH_TRANSFER_RECIPIENTS,
@@ -551,6 +552,50 @@ export class L2ConceptSdk {
   getVaultAta(mint: PublicKey): PublicKey {
     const [vaultAuthority] = this.pda.deriveVaultAuthority();
     return getAssociatedTokenAddressSync(mint, vaultAuthority, true);
+  }
+
+  /**
+   * Check if an account is delegated to MagicBlock
+   * Delegated accounts have their owner changed to the MagicBlock delegation program
+   */
+  async isDelegated(accountPubkey: PublicKey): Promise<boolean> {
+    const accountInfo = await this.config.connection.getAccountInfo(accountPubkey);
+    if (!accountInfo) return false;
+    return accountInfo.owner.equals(DEFAULT_DELEGATION_PROGRAM);
+  }
+
+  /**
+   * Get delegation status for user state and balances
+   * Returns a map of account addresses to their delegation status
+   */
+  async getDelegationStatus(
+    owner: PublicKey,
+    mintList: PublicKey[]
+  ): Promise<DelegationStatus[]> {
+    const [userState] = this.pda.deriveUserState(owner);
+    const accounts = [userState];
+
+    for (const mint of mintList) {
+      const [userBalance] = this.pda.deriveUserBalance(owner, mint);
+      accounts.push(userBalance);
+    }
+
+    const results = await Promise.all(
+      accounts.map(async (account) => ({
+        account,
+        isDelegated: await this.isDelegated(account),
+      }))
+    );
+
+    return results;
+  }
+
+  /**
+   * Check if any of the user's accounts are delegated
+   */
+  async hasDelegatedAccounts(owner: PublicKey, mintList: PublicKey[]): Promise<boolean> {
+    const status = await this.getDelegationStatus(owner, mintList);
+    return status.some((s) => s.isDelegated);
   }
 
   /**

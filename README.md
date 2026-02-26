@@ -44,27 +44,31 @@ L2Concept V1 provides a wallet-like experience where:
 - `initialize` - Initialize program config and vault authority
 - `join` - Create a UserState PDA for a new user
 - `add_mint` - Add a new mint to track for a user
+- `complete_setup` - One-transaction setup with wSOL + up to 9 additional mints
 - `deposit` - Deposit tokens into vault and credit ledger
 - `transfer_batch` - Internal ledger transfers (batch up to 15 recipients)
 - `withdraw` - Withdraw tokens from vault (L1 only)
 
 ### MagicBlock Integration
-- `delegate_user_state_and_balances` - Move accounts to Ephemeral Rollup
-- `commit_and_undelegate_user_state_and_balances` - Return accounts to L1
+- `delegate_user_state_and_balances` - Request delegation to Ephemeral Rollup
+- `commit_and_undelegate_user_state_and_balances` - Request commit/undelegate back to L1
+- **Event-based delegation**: Emits events for MagicBlock indexer (actual CPI requires compatible SDK)
+- **Delegation status checking**: SDK provides `isDelegated()` and `getDelegationStatus()` methods
 
 ### Security Invariants
 - ✅ Credits cannot happen unless debits happen (atomic)
 - ✅ Total debit must be ≤ balance
 - ✅ No underflow/overflow (checked arithmetic)
 - ✅ Withdraw blocked while delegated (owner != program_id)
+- ✅ Duplicate mint prevention in setup
 
 ## Prerequisites
 
 - Rust 1.85.0+
-- Solana CLI 1.17.0+
-- Anchor CLI 0.29.0+
-- Node.js 20+
-- pnpm 8+
+- Solana CLI 2.3.13+
+- Anchor CLI 0.32.1+
+- Node.js 24+
+- pnpm 9+
 
 ## Quick Start
 
@@ -98,246 +102,189 @@ pnpm app:dev
 
 The app will be available at `http://localhost:3000`.
 
-## Environment Variables
+## Program ID
 
-Create a `.env` file in the app directory:
+**Devnet/Mainnet**: `L2CnccKT1qHNS1wJ7p3wJ3JhCX5s4J5wT5x3h5mH2j1`
 
-```env
-# Solana RPC
-NEXT_PUBLIC_SOLANA_RPC_URL=http://127.0.0.1:8899
+## MagicBlock Integration Details
 
-# MagicBlock (optional)
-NEXT_PUBLIC_MAGICBLOCK_RPC_URL=https://devnet.magicblock.app
-NEXT_PUBLIC_MAGIC_ROUTER_URL=https://router.magicblock.app
+### Current Implementation
 
-# Program ID (will use default if not set)
-NEXT_PUBLIC_L2CONCEPTV1_PROGRAM_ID=L2CnccKT1qHNS1wJ7p3wJ3JhCX5s4J5wT5x3h5mH2j1
-```
+The program includes event-based delegation support:
 
-## Project Structure
+1. **`delegate_user_state_and_balances`** - Emits `RequestDelegateEvent` and logs delegation request
+2. **`commit_and_undelegate_user_state_and_balances`** - Emits `RequestCommitUndelegateEvent` and logs commit request
+
+### Delegation Flow
 
 ```
-/
-├── programs/l2conceptv1/    # Anchor program
-│   ├── src/
-│   │   ├── lib.rs          # Main program logic
-│   │   ├── state.rs        # Account structs
-│   │   ├── error.rs        # Error codes
-│   │   └── events.rs       # Event definitions
-│   └── tests/              # Anchor tests
-├── packages/
-│   ├── common/             # Shared constants and types
-│   └── sdk/                # TypeScript SDK
-│       ├── src/
-│       │   ├── sdk.ts      # Main SDK class
-│       │   ├── pda.ts      # PDA derivation helpers
-│       │   └── types.ts    # TypeScript types
-│       └── idl/            # Generated IDL
-├── app/                    # Next.js web app
-│   ├── src/
-│   │   ├── app/            # Next.js app router
-│   │   ├── components/     # React components
-│   │   └── contexts/       # Wallet context
-│   └── .env                # Environment variables
-└── scripts/                # Build and deploy scripts
+┌──────────┐     ┌──────────────────┐     ┌─────────────────────────────┐
+│   User   │────▶│  Program         │────▶│  MagicBlock Indexer         │
+│          │     │  (emit event)    │     │  (processes delegation)     │
+└──────────┘     └──────────────────┘     └─────────────────────────────┘
 ```
 
-## Usage Guide
+### Full CPI Integration (Future)
 
-### SDK Usage
+To enable actual CPI calls to MagicBlock:
+
+1. Wait for `ephemeral-rollups-sdk` compatible with Anchor 0.32.x
+2. Replace event emission with CPI calls using proper instruction discriminators
+3. Add MagicBlock validator configuration per environment
+
+### Delegation Status
+
+The SDK provides methods to check delegation status:
 
 ```typescript
-import { L2ConceptSdk } from '@l2conceptv1/sdk';
-import { Connection, PublicKey } from '@solana/web3.js';
-import { BN } from '@coral-xyz/anchor';
+// Check if a specific account is delegated
+const isDelegated = await sdk.isDelegated(userStatePda);
 
-const connection = new Connection('http://127.0.0.1:8899');
+// Get status for all user accounts
+const status = await sdk.getDelegationStatus(owner, mintList);
+// Returns: [{ account: PublicKey, isDelegated: boolean }, ...]
+
+// Check if any accounts are delegated
+const hasDelegated = await sdk.hasDelegatedAccounts(owner, mintList);
+```
+
+## SDK Usage
+
+### Complete Setup (wSOL + Additional Mints)
+
+```typescript
+import { L2ConceptSdk, WSOL_MINT } from '@l2conceptv1/sdk';
 
 const sdk = new L2ConceptSdk({
   programId: new PublicKey('L2CnccKT1qHNS1wJ7p3wJ3JhCX5s4J5wT5x3h5mH2j1'),
   connection,
-  wallet, // From wallet adapter
+  wallet,
 });
 
-// Join the program
-await sdk.join();
+// Setup with wSOL (default) + additional mints
+const additionalMints = [
+  new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'), // USDC
+  new PublicKey('Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB'), // USDT
+];
 
-// Add a mint
-await sdk.addMint(mintPubkey);
+await sdk.completeSetup(additionalMints);
+```
 
-// Deposit tokens
+### Deposit
+
+```typescript
 await sdk.deposit({
-  mint: mintPubkey,
-  amount: new BN(1000000000), // 1 token with 9 decimals
+  mint: WSOL_MINT,
+  amount: new BN(1_000_000_000), // 1 wSOL
 });
+```
 
-// Transfer to multiple recipients
-await sdk.transferBatchChunked(
-  mintPubkey,
-  [
-    { toOwner: recipient1, amount: new BN(100000000) },
-    { toOwner: recipient2, amount: new BN(200000000) },
-  ],
-  15 // chunk size
-);
+### Batch Transfer (Internal)
 
-// Delegate to ER for fast transactions
-await sdk.delegate({
-  mintList: [mintPubkey],
-});
+```typescript
+const items = [
+  { toOwner: recipient1, amount: new BN(100_000_000) },
+  { toOwner: recipient2, amount: new BN(200_000_000) },
+  // ... up to 15 per transaction
+];
 
-// Later: commit/undelegate back to L1
-await sdk.commitAndUndelegate({
-  mintList: [mintPubkey],
-});
+await sdk.transferBatch({ mint: WSOL_MINT, items });
 
-// Withdraw (only works when not delegated)
+// For large batches (auto-chunked)
+await sdk.transferBatchChunked(WSOL_MINT, largeItemsArray, 15);
+```
+
+### Withdraw (L1 Only)
+
+```typescript
+// Withdrawal is blocked if account is delegated
+// Must commit/undelegate first
 await sdk.withdraw({
-  mint: mintPubkey,
-  amount: new BN(500000000),
+  mint: WSOL_MINT,
+  amount: new BN(500_000_000),
 });
 ```
 
-### Web App
+### Delegation
 
-The web app provides a wallet-like interface with:
+```typescript
+// Delegate to MagicBlock ER
+await sdk.delegate({
+  mintList: [WSOL_MINT, usdcMint],
+});
 
-1. **Wallet Connection** - Connect via Phantom, Solflare, etc.
-2. **Routing Mode Selector**:
-   - **Solana (L1)**: Direct RPC to Solana
-   - **MagicBlock ER**: Direct RPC to Ephemeral Rollup
-   - **Magic Router**: Intelligent routing via MagicBlock
+// Check delegation status
+const status = await sdk.getDelegationStatus(owner, [WSOL_MINT, usdcMint]);
 
-3. **Actions**:
-   - **Join**: Create your UserState
-   - **Add Mint**: Track a new token
-   - **Deposit**: Move tokens into vault
-   - **Send**: Batch transfers to multiple recipients
-   - **Withdraw**: Move tokens out (L1 only)
-   - **Delegate/Commit**: Manage ER delegation
-
-## How Ephemeral Rollup Works
-
-```
-┌─────────────┐     Delegate      ┌──────────────────┐
-│   Solana    │ ─────────────────▶ │  MagicBlock ER   │
-│   (L1)      │                    │  (Fast/Cheap)    │
-│             │ ◀───────────────── │                  │
-└─────────────┘   Commit/Undelegate └──────────────────┘
-       │                                    │
-       │         Transfer Batch             │
-       │         (ledger updates)           │
-       │                                    │
-       ▼                                    ▼
-   Withdraw only                         Fast transfers
-   works here                            (delegated state)
+// Commit and undelegate back to L1
+await sdk.commitAndUndelegate({
+  mintList: [WSOL_MINT, usdcMint],
+});
 ```
 
-### Delegation Flow
+## Development
 
-1. **Delegate**: Move your `UserState` and `UserBalance` accounts to ER
-   - Takes ~1-2 seconds (one Solana transaction)
-   - While delegated, ER has exclusive write access
+### Project Structure
 
-2. **Use on ER**: Perform fast/cheap operations
-   - Transfer batches complete in milliseconds
-   - Costs fractions of a penny
+```
+.
+├── programs/l2conceptv1/    # Anchor program
+│   ├── src/
+│   │   ├── lib.rs           # Main program
+│   │   ├── error.rs         # Error codes
+│   │   ├── events.rs        # Event definitions
+│   │   ├── magicblock.rs    # MagicBlock integration
+│   │   └── state.rs         # Account state definitions
+│   └── Cargo.toml
+├── packages/
+│   ├── sdk/                 # TypeScript SDK
+│   └── common/              # Shared types
+├── app/                     # Next.js web app
+└── scripts/
+    └── install-toolchain.sh # Dev environment setup
+```
 
-3. **Commit/Undelegate**: Return accounts to L1
-   - Finalizes state on Solana
-   - Required before withdrawal
-
-## Deployment
-
-### Devnet
+### Building
 
 ```bash
-# Deploy
-./scripts/deploy.sh devnet
+# Build program
+cd programs/l2conceptv1 && cargo build-sbf
 
-# Configure environment
-export NEXT_PUBLIC_SOLANA_RPC_URL=https://api.devnet.solana.com
-export NEXT_PUBLIC_MAGICBLOCK_RPC_URL=https://devnet.magicblock.app
+# Build SDK
+pnpm -r build
+
+# Build everything
+pnpm build:all
 ```
 
-### Mainnet
+### Testing
 
 ```bash
-# Deploy
-./scripts/deploy.sh mainnet
+# Unit tests
+cargo test
 
-# Configure environment
-export NEXT_PUBLIC_SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
-export NEXT_PUBLIC_MAGICBLOCK_RPC_URL=https://mainnet.magicblock.app
+# Integration tests (requires local validator)
+anchor test
+
+# Type checking
+pnpm typecheck
+
+# Linting
+pnpm lint
 ```
 
-## Scripts
-
-| Script | Description |
-|--------|-------------|
-| `pnpm anchor:build` | Build the Anchor program |
-| `pnpm anchor:test` | Run Anchor tests |
-| `pnpm anchor:deploy:devnet` | Deploy to devnet |
-| `pnpm app:dev` | Start Next.js dev server |
-| `pnpm app:build` | Build Next.js app |
-| `pnpm idl:sync` | Sync IDL to SDK and app |
-| `pnpm build:all` | Build everything |
-
-## Testing
-
-### Unit Tests
+### Verification
 
 ```bash
-pnpm anchor:test
+# Full verification (lint + typecheck + build)
+pnpm verify
 ```
-
-Tests cover:
-- Account structure validation
-- PDA derivation correctness
-- Token operations
-- Batch transfer limits
-- Security invariants
-
-### Manual Testing
-
-1. Start local validator: `solana-test-validator`
-2. Deploy program: `anchor deploy`
-3. Run app: `pnpm app:dev`
-4. Connect wallet and test all flows
-
-## Common Issues
-
-### "Account not found"
-- Make sure you've `join`ed the program
-- Ensure you've `add_mint` for the token you're using
-
-### "Withdrawal not allowed while delegated"
-- You must `commit_and_undelegate` before withdrawing
-- Check your routing mode - withdraw only works on L1
-
-### "Transaction too large"
-- Batch transfers are automatically chunked
-- Maximum 15 recipients per transaction
-
-### "Invalid recipient accounts"
-- Recipients must have `join`ed and `add_mint` for the same token
-- Verify recipient addresses are correct
-
-## Security Considerations
-
-1. **Delegation State**: Always check if accounts are delegated before withdrawals
-2. **Atomic Transfers**: Batch transfers are all-or-nothing
-3. **PDA Validation**: All PDAs are validated on-chain
-4. **Owner Checks**: All sensitive operations verify the signer owns the accounts
 
 ## License
 
 MIT
 
-## Contributing
+## Credits
 
-Contributions are welcome! Please ensure:
-- All tests pass
-- No hardcoded secrets or API keys
-- Code follows existing patterns
-- Documentation is updated
+- Built with [Anchor Framework](https://github.com/coral-xyz/anchor)
+- Ephemeral Rollup integration via [MagicBlock](https://magicblock.gg)

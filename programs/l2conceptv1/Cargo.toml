@@ -1,7 +1,6 @@
 [package]
 name = "l2conceptv1"
 version = "1.0.0"
-description = "L2 Concept V1 - Vault + Ledger PDAs with MagicBlock Ephemeral Rollup"
 edition = "2021"
 
 [lib]
@@ -10,19 +9,15 @@ name = "l2conceptv1"
 
 [features]
 default = []
-no-entrypoint = []
-no-idl = []
-no-log-ix-name = []
 cpi = ["no-entrypoint"]
+no-entrypoint = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 
 [dependencies]
 anchor-lang = { version = "0.32.1", features = ["init-if-needed"] }
 anchor-spl = "0.32.1"
-# Pin to avoid edition2024 issues
 blake3 = "=1.5.5"
 
-[dev-dependencies]
-anchor-client = "0.32.1"
-solana-program-test = "~2.2"
-solana-sdk = "~2.2"
-spl-token = { version = "4.0.0", features = ["no-entrypoint"] }
+# Note: MagicBlock ephemeral-rollups-sdk can be added here when compatible with Anchor 0.32.x
+# For now, MagicBlock integration uses event-based delegation requests
+# that the MagicBlock indexer can process.

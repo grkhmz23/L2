@@ -58,4 +58,7 @@ pub enum L2ConceptV1Error {
 
     #[msg("Duplicate mint in setup")]
     DuplicateMint,
+
+    #[msg("Empty mint list")]
+    EmptyMintList,
 }

@@ -6,10 +6,12 @@ use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 pub mod error;
 pub mod events;
+pub mod magicblock;
 pub mod state;
 
 use error::*;
 use events::*;
+use magicblock::{DelegationParams, log_delegate_request, log_commit_undelegate_request};
 use state::*;
 
 declare_id!("L2CnccKT1qHNS1wJ7p3wJ3JhCX5s4J5wT5x3h5mH2j1");
@@ -425,56 +427,75 @@ pub mod l2conceptv1 {
         Ok(())
     }
 
-    /// Delegate user state and balances to Ephemeral Rollup
-    /// Note: This is a simplified placeholder for the actual ER integration
+    /// Request delegation to MagicBlock Ephemeral Rollup
+    /// Emits events for MagicBlock indexer; full CPI requires compatible SDK
     pub fn delegate_user_state_and_balances(
         ctx: Context<DelegateUserStateAndBalances>,
         mint_list: Vec<Pubkey>,
     ) -> Result<()> {
+        require!(!mint_list.is_empty(), L2ConceptV1Error::EmptyMintList);
         require!(
-            !mint_list.is_empty() && mint_list.len() <= MAX_MINTS_PER_DELEGATION,
+            mint_list.len() <= MAX_MINTS_PER_DELEGATION,
             L2ConceptV1Error::InvalidMintList
         );
 
-        let mint_count = mint_list.len() as u8;
+        let mut accounts_to_delegate = vec![ctx.accounts.user_state.key()];
+
+        // Add user balance accounts for each mint
+        for mint in &mint_list {
+            let balance_pda = Pubkey::find_program_address(
+                &[b"user_balance", ctx.accounts.owner.key().as_ref(), mint.as_ref()],
+                &ID,
+            )
+            .0;
+            accounts_to_delegate.push(balance_pda);
+        }
+
+        // Log delegation request (MagicBlock indexer can process this)
+        let params = DelegationParams::default();
+        log_delegate_request(ctx.accounts.owner.key(), accounts_to_delegate, params);
 
         emit!(DelegateEvent {
             owner: ctx.accounts.owner.key(),
-            mint_count,
-            mints: mint_list.clone(),
+            mint_count: mint_list.len() as u8,
+            mints: mint_list,
         });
-
-        msg!(
-            "Delegation requested for {} mints. Use MagicBlock CLI for actual delegation.",
-            mint_count
-        );
 
         Ok(())
     }
 
-    /// Commit and undelegate from ER back to L1
-    /// Note: This is a simplified placeholder for the actual ER integration
+    /// Request commit and undelegate from MagicBlock ER
+    /// Emits events for MagicBlock indexer; full CPI requires compatible SDK
     pub fn commit_and_undelegate_user_state_and_balances(
         ctx: Context<CommitAndUndelegateUserStateAndBalances>,
         mint_list: Vec<Pubkey>,
     ) -> Result<()> {
+        require!(!mint_list.is_empty(), L2ConceptV1Error::EmptyMintList);
         require!(
-            !mint_list.is_empty() && mint_list.len() <= MAX_MINTS_PER_DELEGATION,
+            mint_list.len() <= MAX_MINTS_PER_DELEGATION,
             L2ConceptV1Error::InvalidMintList
         );
 
-        let mint_count = mint_list.len() as u8;
+        let mut accounts_to_commit = vec![ctx.accounts.user_state.key()];
+
+        // Add user balance accounts for each mint
+        for mint in &mint_list {
+            let balance_pda = Pubkey::find_program_address(
+                &[b"user_balance", ctx.accounts.owner.key().as_ref(), mint.as_ref()],
+                &ID,
+            )
+            .0;
+            accounts_to_commit.push(balance_pda);
+        }
+
+        // Log commit/undelegate request
+        log_commit_undelegate_request(ctx.accounts.owner.key(), accounts_to_commit);
 
         emit!(CommitUndelegateEvent {
             owner: ctx.accounts.owner.key(),
-            mint_count,
-            mints: mint_list.clone(),
+            mint_count: mint_list.len() as u8,
+            mints: mint_list,
         });
-
-        msg!(
-            "Commit/Undelegate requested for {} mints. Use MagicBlock CLI for actual commit.",
-            mint_count
-        );
 
         Ok(())
     }

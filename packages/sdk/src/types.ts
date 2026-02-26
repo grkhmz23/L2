@@ -49,6 +49,11 @@ export interface CommitUndelegateParams {
   mintList: PublicKey[];
 }
 
+export interface DelegationStatus {
+  account: PublicKey;
+  isDelegated: boolean;
+}
+
 export interface TransactionResult {
   signature: TransactionSignature;
   confirmation?: any;
