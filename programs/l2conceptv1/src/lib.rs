@@ -2,7 +2,13 @@
 
 use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
-use anchor_spl::token::{self, Token, TokenAccount, Transfer};
+use anchor_spl::token::{
+    self,
+    spl_token::{self, solana_program::program_pack::Pack},
+    Token,
+    TokenAccount,
+    Transfer,
+};
 
 pub mod error;
 pub mod events;
@@ -356,6 +362,127 @@ pub mod l2conceptv1 {
         sender_balance.version = sender_user_state.state_version;
 
         emit!(TransferBatchEvent {
+            from_owner: sender_user_state.owner,
+            mint: sender_balance.mint,
+            recipient_count: items.len() as u16,
+            total_amount: total_debit,
+            state_version: sender_user_state.state_version,
+            transfers: transfer_events,
+        });
+
+        Ok(())
+    }
+
+    /// Send tokens externally from vault to recipient ATAs (L1 only, non-delegated state)
+    /// This debits the sender ledger and performs SPL transfers from the program vault.
+    pub fn external_send_batch<'info>(
+        ctx: Context<'_, '_, '_, 'info, ExternalSendBatch<'info>>,
+        items: Vec<TransferItem>,
+    ) -> Result<()> {
+        require!(!items.is_empty(), L2ConceptV1Error::InvalidAmount);
+        require!(
+            items.len() <= MAX_BATCH_TRANSFER_RECIPIENTS,
+            L2ConceptV1Error::TooManyRecipients
+        );
+
+        let sender_user_state_info = ctx.accounts.sender_user_state.to_account_info();
+        require!(
+            sender_user_state_info.owner == ctx.program_id,
+            L2ConceptV1Error::WithdrawWhileDelegated
+        );
+
+        let vault_ata_info = ctx.accounts.vault_ata.to_account_info();
+        let vault_authority_info = ctx.accounts.vault_authority.to_account_info();
+        let token_program_info = ctx.accounts.token_program.to_account_info();
+
+        let sender_user_state = &mut ctx.accounts.sender_user_state;
+        let sender_balance = &mut ctx.accounts.sender_balance;
+
+        // Validate total debit
+        let mut total_debit: u64 = 0;
+        for item in &items {
+            require!(item.amount > 0, L2ConceptV1Error::InvalidAmount);
+            total_debit = total_debit
+                .checked_add(item.amount)
+                .ok_or(L2ConceptV1Error::Overflow)?;
+        }
+
+        require!(
+            sender_balance.amount >= total_debit,
+            L2ConceptV1Error::InsufficientBalance
+        );
+
+        let remaining_accounts = ctx.remaining_accounts;
+        require!(
+            remaining_accounts.len() == items.len(),
+            L2ConceptV1Error::InvalidRecipientAccounts
+        );
+
+        // Debit sender before credits. Transaction atomicity guarantees rollback on failure.
+        sender_balance.amount = sender_balance
+            .amount
+            .checked_sub(total_debit)
+            .ok_or(L2ConceptV1Error::Underflow)?;
+
+        let vault_authority_seeds = &[
+            VAULT_AUTHORITY_SEED.as_bytes(),
+            &[ctx.accounts.vault_authority.bump],
+        ];
+        let signer_seeds = &[&vault_authority_seeds[..]];
+
+        let mut transfer_events = Vec::with_capacity(items.len());
+        let mint_key = ctx.accounts.mint.key();
+        let vault_ata_key = ctx.accounts.vault_ata.key();
+
+        for (i, item) in items.iter().enumerate() {
+            let destination_ata_info = remaining_accounts[i].clone();
+
+            require!(
+                destination_ata_info.owner == &token::ID,
+                L2ConceptV1Error::InvalidDestinationTokenAccount
+            );
+            require!(
+                destination_ata_info.key() != vault_ata_key,
+                L2ConceptV1Error::InvalidDestinationTokenAccount
+            );
+
+            let dest_data = destination_ata_info.try_borrow_data()?;
+            let dest_token = spl_token::state::Account::unpack(&dest_data)
+                .map_err(|_| error!(L2ConceptV1Error::InvalidDestinationTokenAccount))?;
+            require!(
+                dest_token.mint == mint_key,
+                L2ConceptV1Error::InvalidDestinationTokenAccount
+            );
+            require!(
+                dest_token.owner == item.to_owner,
+                L2ConceptV1Error::InvalidDestinationTokenAccount
+            );
+            drop(dest_data);
+
+            let cpi_accounts = Transfer {
+                from: vault_ata_info.clone(),
+                to: destination_ata_info.clone(),
+                authority: vault_authority_info.clone(),
+            };
+            let cpi_ctx =
+                CpiContext::new_with_signer(token_program_info.clone(), cpi_accounts, signer_seeds);
+            token::transfer(cpi_ctx, item.amount)?;
+
+            transfer_events.push(TransferEvent {
+                from_owner: sender_user_state.owner,
+                mint: sender_balance.mint,
+                to_owner: item.to_owner,
+                amount: item.amount,
+            });
+        }
+
+        sender_user_state.state_version = sender_user_state
+            .state_version
+            .checked_add(1)
+            .ok_or(L2ConceptV1Error::Overflow)?;
+        sender_balance.version = sender_user_state.state_version;
+
+        emit!(ExternalSendBatchEvent {
             from_owner: sender_user_state.owner,
             mint: sender_balance.mint,
             recipient_count: items.len() as u16,
@@ -748,6 +875,52 @@ pub struct Withdraw<'info> {
         associated_token::authority = owner,
     )]
     pub destination_ata: Account<'info, TokenAccount>,
+
+    pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
+#[instruction(items: Vec<TransferItem>)]
+pub struct ExternalSendBatch<'info> {
+    #[account(mut)]
+    pub owner: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [USER_STATE_SEED.as_bytes(), owner.key().as_ref()],
+        bump = sender_user_state.bump,
+        has_one = owner,
+    )]
+    pub sender_user_state: Account<'info, UserState>,
+
+    #[account(
+        mut,
+        seeds = [
+            USER_BALANCE_SEED.as_bytes(),
+            owner.key().as_ref(),
+            mint.key().as_ref()
+        ],
+        bump = sender_balance.bump,
+        has_one = owner,
+        has_one = mint,
+    )]
+    pub sender_balance: Account<'info, UserBalance>,
+
+    /// CHECK: Mint consistency is validated via sender_balance + vault_ata constraints
+    pub mint: AccountInfo<'info>,
+
+    #[account(
+        seeds = [VAULT_AUTHORITY_SEED.as_bytes()],
+        bump = vault_authority.bump,
+    )]
+    pub vault_authority: Account<'info, VaultAuthority>,
+
+    #[account(
+        mut,
+        associated_token::mint = mint,
+        associated_token::authority = vault_authority,
+    )]
+    pub vault_ata: Account<'info, TokenAccount>,
 
     pub token_program: Program<'info, Token>,
 }

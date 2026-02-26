@@ -61,4 +61,7 @@ pub enum L2ConceptV1Error {
 
     #[msg("Empty mint list")]
     EmptyMintList,
+
+    #[msg("Invalid destination token account")]
+    InvalidDestinationTokenAccount,
 }

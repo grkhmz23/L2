@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useWalletContext } from '@/contexts/WalletContext';
 import { PublicKey } from '@solana/web3.js';
 import { BN } from '@coral-xyz/anchor';
+import { useWallet } from '@solana/wallet-adapter-react';
+import type { TransferItem as SdkTransferItem } from '@l2conceptv1/sdk';
 import toast from 'react-hot-toast';
 
 export function ActionPanel() {
@@ -98,12 +100,50 @@ function DepositForm() {
 }
 
 function SendForm() {
-  const { sdk } = useWalletContext();
+  const { sdk, solanaSdk, routingMode } = useWalletContext();
+  const { publicKey } = useWallet();
   const [mint, setMint] = useState('');
   const [recipients, setRecipients] = useState('');
   const [mode, setMode] = useState<'simple' | 'advanced'>('simple');
   const [defaultAmount, setDefaultAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const classifyRecipientsForEr = async (
+    mintPubkey: PublicKey,
+    items: SdkTransferItem[]
+  ): Promise<{ internalItems: SdkTransferItem[]; fallbackItems: SdkTransferItem[] }> => {
+    if (!solanaSdk) {
+      return { internalItems: [], fallbackItems: items };
+    }
+
+    const uniqueRecipients = Array.from(
+      new Set(items.map((item) => item.toOwner.toBase58()))
+    );
+
+    const delegatedMap = new Map<string, boolean>();
+    await Promise.all(
+      uniqueRecipients.map(async (ownerBase58) => {
+        const owner = new PublicKey(ownerBase58);
+        const status = await solanaSdk.getDelegationStatus(owner, [mintPubkey]);
+        delegatedMap.set(
+          ownerBase58,
+          status.length > 0 && status.every((s) => s.isDelegated)
+        );
+      })
+    );
+
+    const internalItems: SdkTransferItem[] = [];
+    const fallbackItems: SdkTransferItem[] = [];
+    for (const item of items) {
+      if (delegatedMap.get(item.toOwner.toBase58())) {
+        internalItems.push(item);
+      } else {
+        fallbackItems.push(item);
+      }
+    }
+
+    return { internalItems, fallbackItems };
+  };
 
   const handleSend = async () => {
     if (!sdk || !mint.trim() || !recipients.trim()) return;
@@ -112,8 +152,12 @@ function SendForm() {
     try {
       const mintPubkey = new PublicKey(mint.trim());
       
-      let items;
+      let items: SdkTransferItem[];
       if (mode === 'simple') {
+        if (!defaultAmount.trim()) {
+          throw new Error('Amount per recipient is required in simple mode');
+        }
+
         const addresses = recipients.split(',').map((s) => s.trim()).filter(Boolean);
         items = addresses.map((addr) => ({
           toOwner: new PublicKey(addr),
@@ -123,8 +167,84 @@ function SendForm() {
         items = sdk.parseBatchTransferInput(recipients, defaultAmount);
       }
 
-      const results = await sdk.transferBatchChunked(mintPubkey, items, 15);
-      toast.success(`Sent to ${items.length} recipients in ${results.length} transaction(s)`);
+      if (routingMode !== 'er') {
+        const results = await sdk.transferBatchChunked(mintPubkey, items, 15);
+        toast.success(`Sent to ${items.length} recipients in ${results.length} transaction(s)`);
+        setRecipients('');
+        return;
+      }
+
+      if (!solanaSdk || !publicKey) {
+        throw new Error('L1 SDK unavailable for MagicBlock fallback flow');
+      }
+
+      const senderStatus = await solanaSdk.getDelegationStatus(publicKey, [mintPubkey]);
+      const senderFullyDelegated =
+        senderStatus.length > 0 && senderStatus.every((s) => s.isDelegated);
+      const senderHasDelegatedAccounts = senderStatus.some((s) => s.isDelegated);
+
+      const { internalItems, fallbackItems } = await classifyRecipientsForEr(mintPubkey, items);
+
+      if (internalItems.length > 0 && !senderFullyDelegated) {
+        throw new Error(
+          'Sender accounts are not fully delegated. Delegate your state/balance for this mint or switch routing to Solana (L1).'
+        );
+      }
+
+      if (fallbackItems.length > 0) {
+        const proceed = window.confirm(
+          `Detected ${fallbackItems.length} recipient(s) not delegated to MagicBlock. ` +
+            `These will be sent on L1 from the program vault after commit/undelegate. Continue?`
+        );
+        if (!proceed) {
+          return;
+        }
+      }
+
+      let internalTxCount = 0;
+      let fallbackL1TxCount = 0;
+
+      if (internalItems.length > 0) {
+        const erResults = await sdk.transferBatchChunked(mintPubkey, internalItems, 15);
+        internalTxCount = erResults.length;
+        toast.success(
+          `ER send complete for ${internalItems.length} recipient(s).` +
+            (fallbackItems.length > 0 ? ' Preparing L1 vault send...' : '')
+        );
+      }
+
+      if (fallbackItems.length > 0) {
+        if (senderHasDelegatedAccounts) {
+          await solanaSdk.commitAndUndelegate({ mintList: [mintPubkey] });
+          fallbackL1TxCount += 1;
+          toast.success('Commit/undelegate requested. Waiting for L1 state...');
+
+          const undelegated = await solanaSdk.waitForDelegationStatus(
+            publicKey,
+            [mintPubkey],
+            false,
+            { timeoutMs: 90_000, pollIntervalMs: 2_000 }
+          );
+
+          if (!undelegated) {
+            throw new Error(
+              'Timed out waiting for commit/undelegate to finalize on L1. Ensure MagicBlock indexer/validator is running.'
+            );
+          }
+        }
+
+        const l1Results = await solanaSdk.externalSendBatchChunked(
+          mintPubkey,
+          fallbackItems,
+          12
+        );
+        fallbackL1TxCount += l1Results.length;
+      }
+
+      toast.success(
+        `Send complete: ${internalItems.length} ER recipient(s), ${fallbackItems.length} L1 recipient(s). ` +
+          `Txs: ${internalTxCount + fallbackL1TxCount}`
+      );
       setRecipients('');
     } catch (error: any) {
       console.error('Send error:', error);
@@ -292,13 +412,15 @@ function WithdrawForm() {
 }
 
 function DelegateForm() {
-  const { sdk } = useWalletContext();
+  const { sdk, solanaSdk } = useWalletContext();
+  const { publicKey } = useWallet();
   const [mintList, setMintList] = useState('');
   const [action, setAction] = useState<'delegate' | 'commit'>('delegate');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleAction = async () => {
-    if (!sdk || !mintList.trim()) return;
+    const l1Sdk = solanaSdk || sdk;
+    if (!l1Sdk || !mintList.trim()) return;
 
     setIsLoading(true);
     try {
@@ -306,13 +428,43 @@ function DelegateForm() {
       const mintPubkeys = mints.map((m) => new PublicKey(m));
 
       if (action === 'delegate') {
-        const result = await sdk.delegate({ mintList: mintPubkeys });
-        toast.success('Delegation successful!');
+        const result = await l1Sdk.delegate({ mintList: mintPubkeys });
         console.log('Delegate transaction:', result.signature);
+
+        if (publicKey) {
+          toast.success('Delegation requested. Waiting for MagicBlock to apply...');
+          const delegated = await l1Sdk.waitForDelegationStatus(publicKey, mintPubkeys, true, {
+            timeoutMs: 90_000,
+            pollIntervalMs: 2_000,
+          });
+
+          if (!delegated) {
+            throw new Error(
+              'Delegation request sent, but timed out waiting for status change. Ensure MagicBlock indexer/validator is running.'
+            );
+          }
+        }
+
+        toast.success('Delegation successful!');
       } else {
-        const result = await sdk.commitAndUndelegate({ mintList: mintPubkeys });
-        toast.success('Commit/Undelegate successful!');
+        const result = await l1Sdk.commitAndUndelegate({ mintList: mintPubkeys });
         console.log('Commit transaction:', result.signature);
+
+        if (publicKey) {
+          toast.success('Commit/undelegate requested. Waiting for L1 state...');
+          const undelegated = await l1Sdk.waitForDelegationStatus(publicKey, mintPubkeys, false, {
+            timeoutMs: 90_000,
+            pollIntervalMs: 2_000,
+          });
+
+          if (!undelegated) {
+            throw new Error(
+              'Commit/undelegate request sent, but timed out waiting for status change. Ensure MagicBlock indexer/validator is running.'
+            );
+          }
+        }
+
+        toast.success('Commit/Undelegate successful!');
       }
     } catch (error: any) {
       console.error('Delegation error:', error);

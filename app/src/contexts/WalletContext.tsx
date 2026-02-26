@@ -27,7 +27,9 @@ export type RoutingMode = 'router' | 'solana' | 'er';
 
 interface WalletContextValue {
   sdk: L2ConceptSdk | null;
+  solanaSdk: L2ConceptSdk | null;
   connection: Connection;
+  solanaConnection: Connection;
   routingMode: RoutingMode;
   setRoutingMode: (mode: RoutingMode) => void;
   isLoading: boolean;
@@ -84,6 +86,21 @@ const WalletContextInner: FC<{ children: ReactNode }> = ({ children }) => {
     });
   }, [wallet.publicKey, wallet.signTransaction, wallet.signAllTransactions, connection]);
 
+  // Always-available L1 SDK for delegation/commit/withdraw flows even while UI is in ER mode.
+  const solanaSdk = useMemo(() => {
+    if (!wallet.publicKey || !wallet.signTransaction) return null;
+
+    return new L2ConceptSdk({
+      programId: new PublicKey(env.L2CONCEPTV1_PROGRAM_ID),
+      connection: baseConnection,
+      wallet: {
+        publicKey: wallet.publicKey,
+        signTransaction: wallet.signTransaction,
+        signAllTransactions: wallet.signAllTransactions,
+      },
+    });
+  }, [wallet.publicKey, wallet.signTransaction, wallet.signAllTransactions, baseConnection]);
+
   const refreshUserState = useCallback(async () => {
     if (!sdk || !wallet.publicKey) return;
     setIsLoading(true);
@@ -97,7 +114,9 @@ const WalletContextInner: FC<{ children: ReactNode }> = ({ children }) => {
 
   const value: WalletContextValue = {
     sdk,
+    solanaSdk,
     connection,
+    solanaConnection: baseConnection,
     routingMode,
     setRoutingMode,
     isLoading,

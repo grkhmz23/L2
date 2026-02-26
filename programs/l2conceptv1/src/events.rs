@@ -53,6 +53,16 @@ pub struct TransferBatchEvent {
 }
 
 #[event]
+pub struct ExternalSendBatchEvent {
+    pub from_owner: Pubkey,
+    pub mint: Pubkey,
+    pub recipient_count: u16,
+    pub total_amount: u64,
+    pub state_version: u64,
+    pub transfers: Vec<TransferEvent>,
+}
+
+#[event]
 pub struct WithdrawEvent {
     pub owner: Pubkey,
     pub mint: Pubkey,

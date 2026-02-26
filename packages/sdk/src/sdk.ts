@@ -12,6 +12,7 @@ import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   getAssociatedTokenAddressSync,
   createAssociatedTokenAccountInstruction,
+  createTransferInstruction,
 } from '@solana/spl-token';
 import { PdaHelper } from './pda';
 import {
@@ -77,6 +78,7 @@ export class L2ConceptSdk {
         { name: 'addMint', accounts: [], args: [] },
         { name: 'deposit', accounts: [], args: [] },
         { name: 'transferBatch', accounts: [], args: [] },
+        { name: 'externalSendBatch', accounts: [], args: [] },
         { name: 'withdraw', accounts: [], args: [] },
         { name: 'delegateUserStateAndBalances', accounts: [], args: [] },
         { name: 'commitAndUndelegateUserStateAndBalances', accounts: [], args: [] },
@@ -373,6 +375,119 @@ export class L2ConceptSdk {
   }
 
   /**
+   * Send tokens externally from the program vault to recipient ATAs.
+   * Requires sender accounts to be committed/undelegated on L1.
+   */
+  async externalSendBatch(params: TransferBatchParams): Promise<TransactionResult> {
+    if (!this.isConnected) throw new Error('Wallet not connected');
+
+    const owner = this.walletPublicKey!;
+    const { mint, items } = params;
+
+    if (items.length > MAX_BATCH_TRANSFER_RECIPIENTS) {
+      throw new Error(`Max ${MAX_BATCH_TRANSFER_RECIPIENTS} recipients per batch`);
+    }
+    if (items.length === 0) {
+      throw new Error('No recipients provided');
+    }
+
+    const pdas = this.pda.getAllPdas(owner, mint);
+    const vaultAta = getAssociatedTokenAddressSync(mint, pdas.vaultAuthority, true);
+    const tx = new Transaction();
+
+    // Prepare recipient ATAs (create if missing)
+    const recipientAtaByOwner = new Map<string, PublicKey>();
+    for (const item of items) {
+      const ownerKey = item.toOwner.toBase58();
+      if (!recipientAtaByOwner.has(ownerKey)) {
+        recipientAtaByOwner.set(ownerKey, getAssociatedTokenAddressSync(mint, item.toOwner));
+      }
+    }
+
+    const uniqueRecipientOwners = Array.from(recipientAtaByOwner.keys());
+    const uniqueRecipientAtas = uniqueRecipientOwners.map((ownerKey) => {
+      const ata = recipientAtaByOwner.get(ownerKey);
+      if (!ata) throw new Error('Internal error deriving recipient ATA');
+      return ata;
+    });
+
+    const ataInfos = await this.config.connection.getMultipleAccountsInfo(uniqueRecipientAtas);
+    uniqueRecipientOwners.forEach((ownerKey, idx) => {
+      const ataExists = !!ataInfos[idx];
+      if (ataExists) return;
+
+      const recipientOwner = new PublicKey(ownerKey);
+      const recipientAta = recipientAtaByOwner.get(ownerKey);
+      if (!recipientAta) throw new Error('Internal error resolving recipient ATA');
+
+      tx.add(
+        createAssociatedTokenAccountInstruction(
+          owner,
+          recipientAta,
+          recipientOwner,
+          mint
+        )
+      );
+    });
+
+    const remainingAccounts = items.map((item) => {
+      const recipientAta = recipientAtaByOwner.get(item.toOwner.toBase58());
+      if (!recipientAta) throw new Error('Internal error resolving recipient ATA');
+      return {
+        pubkey: recipientAta,
+        isWritable: true,
+        isSigner: false,
+      };
+    });
+
+    const externalSendIx = await this.program.methods
+      .externalSendBatch(
+        items.map((item) => ({
+          toOwner: item.toOwner,
+          amount: new BN(item.amount.toString()),
+        }))
+      )
+      .accounts({
+        owner,
+        senderUserState: pdas.userState,
+        senderBalance: pdas.userBalance,
+        mint,
+        vaultAuthority: pdas.vaultAuthority,
+        vaultAta,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .remainingAccounts(remainingAccounts)
+      .instruction();
+
+    tx.add(externalSendIx);
+    return this.sendTransaction(tx);
+  }
+
+  /**
+   * Chunked external sends from the program vault.
+   */
+  async externalSendBatchChunked(
+    mint: PublicKey,
+    items: TransferItem[],
+    chunkSize: number = MAX_BATCH_TRANSFER_RECIPIENTS
+  ): Promise<TransactionResult[]> {
+    if (chunkSize <= 0) throw new Error('chunkSize must be > 0');
+
+    const chunks: TransferItem[][] = [];
+    for (let i = 0; i < items.length; i += chunkSize) {
+      chunks.push(items.slice(i, i + chunkSize));
+    }
+
+    const results: TransactionResult[] = [];
+    for (const chunk of chunks) {
+      const result = await this.externalSendBatch({ mint, items: chunk });
+      results.push(result);
+    }
+
+    return results;
+  }
+
+  /**
    * Parse batch transfer input from string format
    * Format: "address1,amount1\naddress2,amount2" or comma-separated addresses
    */
@@ -596,6 +711,125 @@ export class L2ConceptSdk {
   async hasDelegatedAccounts(owner: PublicKey, mintList: PublicKey[]): Promise<boolean> {
     const status = await this.getDelegationStatus(owner, mintList);
     return status.some((s) => s.isDelegated);
+  }
+
+  /**
+   * Wait until all user state + mint balance accounts reach the desired delegation state.
+   * Returns false on timeout.
+   */
+  async waitForDelegationStatus(
+    owner: PublicKey,
+    mintList: PublicKey[],
+    targetDelegated: boolean,
+    opts: { timeoutMs?: number; pollIntervalMs?: number } = {}
+  ): Promise<boolean> {
+    const timeoutMs = opts.timeoutMs ?? 60_000;
+    const pollIntervalMs = opts.pollIntervalMs ?? 2_000;
+    const deadline = Date.now() + timeoutMs;
+
+    while (Date.now() < deadline) {
+      const status = await this.getDelegationStatus(owner, mintList);
+      if (status.length > 0 && status.every((s) => s.isDelegated === targetDelegated)) {
+        return true;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+    }
+
+    return false;
+  }
+
+  /**
+   * Send standard SPL transfers from the connected wallet ATA to recipient ATAs (L1 fallback path).
+   * Creates recipient ATAs if needed.
+   */
+  async sendExternalTransfers(
+    mint: PublicKey,
+    items: TransferItem[]
+  ): Promise<TransactionResult> {
+    if (!this.isConnected) throw new Error('Wallet not connected');
+    if (items.length === 0) throw new Error('No recipients provided');
+
+    const owner = this.walletPublicKey!;
+    const sourceAta = getAssociatedTokenAddressSync(mint, owner);
+    const tx = new Transaction();
+
+    // Deduplicate recipient ATA creation checks within the transaction.
+    const recipientAtaByOwner = new Map<string, PublicKey>();
+    for (const item of items) {
+      const key = item.toOwner.toBase58();
+      if (!recipientAtaByOwner.has(key)) {
+        recipientAtaByOwner.set(key, getAssociatedTokenAddressSync(mint, item.toOwner));
+      }
+    }
+
+    const uniqueRecipientOwners = Array.from(recipientAtaByOwner.keys());
+    const uniqueRecipientAtas = uniqueRecipientOwners.map((ownerKey) => {
+      const ata = recipientAtaByOwner.get(ownerKey);
+      if (!ata) throw new Error('Internal error deriving recipient ATA');
+      return ata;
+    });
+
+    const ataInfos = await this.config.connection.getMultipleAccountsInfo(uniqueRecipientAtas);
+    const ataExists = new Map<string, boolean>();
+    uniqueRecipientOwners.forEach((ownerKey, idx) => {
+      ataExists.set(ownerKey, !!ataInfos[idx]);
+    });
+
+    for (const ownerKey of uniqueRecipientOwners) {
+      if (!ataExists.get(ownerKey)) {
+        const recipientOwner = new PublicKey(ownerKey);
+        const recipientAta = recipientAtaByOwner.get(ownerKey);
+        if (!recipientAta) throw new Error('Internal error resolving recipient ATA');
+
+        tx.add(
+          createAssociatedTokenAccountInstruction(
+            owner,
+            recipientAta,
+            recipientOwner,
+            mint
+          )
+        );
+      }
+    }
+
+    for (const item of items) {
+      const recipientAta = recipientAtaByOwner.get(item.toOwner.toBase58());
+      if (!recipientAta) throw new Error('Internal error resolving recipient ATA');
+
+      tx.add(
+        createTransferInstruction(
+          sourceAta,
+          recipientAta,
+          owner,
+          BigInt(item.amount.toString())
+        )
+      );
+    }
+
+    return this.sendTransaction(tx);
+  }
+
+  /**
+   * Chunked external SPL transfers for mixed/non-delegated recipient fallback.
+   */
+  async sendExternalTransfersChunked(
+    mint: PublicKey,
+    items: TransferItem[],
+    chunkSize: number = 8
+  ): Promise<TransactionResult[]> {
+    if (chunkSize <= 0) {
+      throw new Error('chunkSize must be > 0');
+    }
+
+    const results: TransactionResult[] = [];
+    for (let i = 0; i < items.length; i += chunkSize) {
+      const chunk = items.slice(i, i + chunkSize);
+      const result = await this.sendExternalTransfers(mint, chunk);
+      results.push(result);
+    }
+
+    return results;
   }
 
   /**
