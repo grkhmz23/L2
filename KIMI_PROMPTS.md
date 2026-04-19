@@ -94,6 +94,7 @@ Run each numbered prompt end-to-end before starting the next.
 
 <a id="prompt-1"></a>
 ## Prompt 1 — Rebrand, directory restructure, clean dead code
+> **COMPLETED** — commit `bfaaf19`
 
 ```
 GOAL
@@ -215,6 +216,7 @@ DONE CHECKLIST
 
 <a id="prompt-2"></a>
 ## Prompt 2 — Real ER delegation CPI (replace event emission)
+> **COMPLETED** — commit `a51cd4e`
 
 ```
 GOAL
@@ -302,6 +304,7 @@ DONE CHECKLIST
 
 <a id="prompt-3"></a>
 ## Prompt 3 — Declare real program ID, deploy skeleton to devnet
+> **COMPLETED** — commit `35d34b9`
 
 ```
 GOAL
@@ -361,6 +364,7 @@ DONE CHECKLIST
 
 <a id="prompt-4"></a>
 ## Prompt 4 — AgentState PDA + spawn/close agent instructions
+> **COMPLETED** — commit `d2d0fd1`
 
 ```
 GOAL
@@ -453,6 +457,7 @@ DONE CHECKLIST
 
 <a id="prompt-5"></a>
 ## Prompt 5 — Spend policy engine
+> **COMPLETED** — commit `ee1c0fb`
 
 ```
 GOAL
@@ -532,6 +537,7 @@ DONE CHECKLIST
 
 <a id="prompt-6"></a>
 ## Prompt 6 — AgentBalance + agent transfer instructions
+> **COMPLETED** — commit `7d1078b`
 
 ```
 GOAL
