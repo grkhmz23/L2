@@ -65,6 +65,12 @@ pub enum SableError {
     #[msg("Invalid destination token account")]
     InvalidDestinationTokenAccount,
 
-    #[msg("Not yet implemented")]
-    NotYetImplemented,
+    #[msg("Delegation CPI failed")]
+    DelegationFailed,
+
+    #[msg("Commit/undelegate CPI failed")]
+    CommitFailed,
+
+    #[msg("Too many balances for delegation")]
+    TooManyBalancesForDelegation,
 }

@@ -3,7 +3,7 @@
 | # | Prompt | Status | Commit | Notes |
 |---|--------|--------|--------|-------|
 | 1 | Rebrand & cleanup | ✅ | | Renamed L2Concept→Sable, cleaned event delegation, created docs |
-| 2 | Real ER delegation CPI | ☐ | | |
+| 2 | Real ER delegation CPI | ✅ | | Delegate + commit/undelegate via ephemeral-rollups-sdk CPI. Cargo pins for edition2024 compat.
 | 3 | Declare real program ID, deploy skeleton | ☐ | | |
 | 4 | AgentState PDA + spawn/close agent | ☐ | | |
 | 5 | Spend policy engine | ☐ | | |

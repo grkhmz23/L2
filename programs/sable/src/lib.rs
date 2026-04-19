@@ -9,10 +9,12 @@ use anchor_spl::token::{
     TokenAccount,
     Transfer,
 };
+use ephemeral_rollups_sdk::anchor::{commit, delegate, ephemeral};
+use ephemeral_rollups_sdk::cpi::{delegate_account, DelegateAccounts, DelegateConfig};
+use ephemeral_rollups_sdk::ephem::commit_and_undelegate_accounts;
 
 pub mod error;
 pub mod events;
-pub mod magicblock;
 pub mod state;
 
 use error::*;
@@ -22,13 +24,10 @@ use state::*;
 // NOTE: SABLE_PROGRAM_ID_TBD — replace with real deployed program ID in Prompt 3
 declare_id!("CvGdTmYZXMSibPL49xCzvghYDk156EfUVbkrd9P6devK");
 
-// Default MagicBlock delegation program ID (mainnet)
-pub const DEFAULT_DELEGATION_PROGRAM_ID: Pubkey =
-    pubkey!("DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh");
-
 // wSOL mint address - always included by default
 pub const WSOL_MINT: Pubkey = pubkey!("So11111111111111111111111111111111111111112");
 
+#[ephemeral]
 #[program]
 pub mod sable {
     use super::*;
@@ -41,7 +40,7 @@ pub mod sable {
         let config = &mut ctx.accounts.config;
         config.admin = ctx.accounts.config_admin.key();
         config.delegation_program_id =
-            delegation_program_id.unwrap_or(DEFAULT_DELEGATION_PROGRAM_ID);
+            delegation_program_id.unwrap_or(ephemeral_rollups_sdk::id());
         config.bump = ctx.bumps.config;
 
         let vault_authority = &mut ctx.accounts.vault_authority;
@@ -554,22 +553,240 @@ pub mod sable {
         Ok(())
     }
 
-    /// Request delegation to MagicBlock Ephemeral Rollup
-    /// Real CPI will be wired in Prompt 2.
-    pub fn delegate_user_state_and_balances(
-        _ctx: Context<DelegateUserStateAndBalances>,
-        _mint_list: Vec<Pubkey>,
+    /// Delegate UserState and UserBalance PDAs to the Ephemeral Rollup.
+    ///
+    /// Remaining accounts (per mint in mint_list, in order):
+    ///   [i*4 + 0]: user_balance PDA
+    ///   [i*4 + 1]: buffer PDA for the balance
+    ///   [i*4 + 2]: delegation_record PDA for the balance
+    ///   [i*4 + 3]: delegation_metadata PDA for the balance
+    pub fn delegate_user_state_and_balances<'info>(
+        ctx: Context<'_, '_, '_, 'info, DelegateUserStateAndBalances<'info>>,
+        mint_list: Vec<Pubkey>,
     ) -> Result<()> {
-        Err(SableError::NotYetImplemented.into())
+        require!(!mint_list.is_empty(), SableError::EmptyMintList);
+        require!(
+            mint_list.len() <= MAX_MINTS_PER_DELEGATION,
+            SableError::TooManyMints
+        );
+
+        // Check for duplicates
+        let mut mint_set = std::collections::HashSet::new();
+        for mint in &mint_list {
+            require!(mint_set.insert(*mint), SableError::DuplicateMint);
+        }
+
+        let owner_key = ctx.accounts.owner.key();
+
+        // Ensure UserState is not already delegated
+        let user_state_info = ctx.accounts.user_state.to_account_info();
+        require!(
+            user_state_info.owner == ctx.program_id,
+            SableError::AlreadyDelegated
+        );
+
+        // Delegate UserState via macro-generated helper
+        let user_state_seeds = &[USER_STATE_SEED.as_bytes(), owner_key.as_ref()];
+        ctx.accounts
+            .delegate_user_state(
+                &ctx.accounts.owner,
+                user_state_seeds,
+                DelegateConfig {
+                    validator: None,
+                    ..Default::default()
+                },
+            )
+            .map_err(|_| error!(SableError::DelegationFailed))?;
+
+        // Validate remaining accounts count: 4 per mint (balance + buffer + record + metadata)
+        let remaining = ctx.remaining_accounts;
+        require!(
+            remaining.len() == mint_list.len() * 4,
+            SableError::InvalidRecipientAccounts
+        );
+
+        // Delegate each UserBalance
+        for (i, mint) in mint_list.iter().enumerate() {
+            let balance_acc = &remaining[i * 4];
+            let buffer_acc = &remaining[i * 4 + 1];
+            let record_acc = &remaining[i * 4 + 2];
+            let metadata_acc = &remaining[i * 4 + 3];
+
+            // Validate balance PDA
+            let expected_balance_seeds = &[
+                USER_BALANCE_SEED.as_bytes(),
+                owner_key.as_ref(),
+                mint.as_ref(),
+            ];
+            let (expected_pda, _) =
+                Pubkey::find_program_address(expected_balance_seeds, ctx.program_id);
+            require!(
+                balance_acc.key() == expected_pda,
+                SableError::InvalidRecipientAccounts
+            );
+
+            // Ensure balance is not already delegated
+            require!(
+                balance_acc.owner == ctx.program_id,
+                SableError::AlreadyDelegated
+            );
+
+            // Validate buffer PDA
+            let expected_buffer_seeds = &[
+                ephemeral_rollups_sdk::pda::DELEGATE_BUFFER_TAG,
+                balance_acc.key.as_ref(),
+            ];
+            let (expected_buffer, _) =
+                Pubkey::find_program_address(expected_buffer_seeds, ctx.program_id);
+            require!(
+                buffer_acc.key() == expected_buffer,
+                SableError::InvalidRecipientAccounts
+            );
+
+            // Validate delegation record PDA
+            let expected_record_seeds = &[
+                ephemeral_rollups_sdk::pda::DELEGATION_RECORD_TAG,
+                balance_acc.key.as_ref(),
+            ];
+            let (expected_record, _) =
+                Pubkey::find_program_address(expected_record_seeds, &ephemeral_rollups_sdk::id());
+            require!(
+                record_acc.key() == expected_record,
+                SableError::InvalidRecipientAccounts
+            );
+
+            // Validate delegation metadata PDA
+            let expected_metadata_seeds = &[
+                ephemeral_rollups_sdk::pda::DELEGATION_METADATA_TAG,
+                balance_acc.key.as_ref(),
+            ];
+            let (expected_metadata, _) =
+                Pubkey::find_program_address(expected_metadata_seeds, &ephemeral_rollups_sdk::id());
+            require!(
+                metadata_acc.key() == expected_metadata,
+                SableError::InvalidRecipientAccounts
+            );
+
+            // CPI delegate the balance
+            let balance_seeds = &[
+                USER_BALANCE_SEED.as_bytes(),
+                owner_key.as_ref(),
+                mint.as_ref(),
+            ];
+            let del_accounts = DelegateAccounts {
+                payer: &ctx.accounts.owner.to_account_info(),
+                pda: balance_acc,
+                owner_program: &ctx.accounts.owner_program,
+                buffer: buffer_acc,
+                delegation_record: record_acc,
+                delegation_metadata: metadata_acc,
+                delegation_program: &ctx.accounts.delegation_program,
+                system_program: &ctx.accounts.system_program.to_account_info(),
+            };
+            delegate_account(
+                del_accounts,
+                balance_seeds,
+                DelegateConfig {
+                    validator: None,
+                    ..Default::default()
+                },
+            )
+            .map_err(|_| error!(SableError::DelegationFailed))?;
+        }
+
+        emit!(DelegateEvent {
+            owner: owner_key,
+            mint_count: mint_list.len() as u8,
+            mints: mint_list,
+        });
+
+        Ok(())
     }
 
-    /// Request commit and undelegate from MagicBlock ER
-    /// Real CPI will be wired in Prompt 2.
-    pub fn commit_and_undelegate_user_state_and_balances(
-        _ctx: Context<CommitAndUndelegateUserStateAndBalances>,
-        _mint_list: Vec<Pubkey>,
+    /// Commit state from Ephemeral Rollup and undelegate UserState + UserBalance PDAs.
+    ///
+    /// Remaining accounts (per mint in mint_list, in order):
+    ///   [i]: user_balance PDA
+    pub fn commit_and_undelegate_user_state_and_balances<'info>(
+        ctx: Context<'_, '_, '_, 'info, CommitAndUndelegateUserStateAndBalances<'info>>,
+        mint_list: Vec<Pubkey>,
     ) -> Result<()> {
-        Err(SableError::NotYetImplemented.into())
+        require!(!mint_list.is_empty(), SableError::EmptyMintList);
+        require!(
+            mint_list.len() <= MAX_MINTS_PER_DELEGATION,
+            SableError::TooManyMints
+        );
+
+        // Check for duplicates
+        let mut mint_set = std::collections::HashSet::new();
+        for mint in &mint_list {
+            require!(mint_set.insert(*mint), SableError::DuplicateMint);
+        }
+
+        let owner_key = ctx.accounts.owner.key();
+
+        // Ensure UserState is delegated
+        let user_state_info = ctx.accounts.user_state.to_account_info();
+        require!(
+            user_state_info.owner != ctx.program_id,
+            SableError::NotDelegated
+        );
+
+        // Validate remaining accounts count: 1 per mint (balance PDA)
+        let remaining = ctx.remaining_accounts;
+        require!(
+            remaining.len() == mint_list.len(),
+            SableError::InvalidRecipientAccounts
+        );
+
+        // Build list of accounts to commit/undelegate
+        let mut account_infos = Vec::with_capacity(1 + mint_list.len());
+        account_infos.push(user_state_info);
+
+        for (i, mint) in mint_list.iter().enumerate() {
+            let balance_acc = &remaining[i];
+
+            // Validate balance PDA
+            let expected_balance_seeds = &[
+                USER_BALANCE_SEED.as_bytes(),
+                owner_key.as_ref(),
+                mint.as_ref(),
+            ];
+            let (expected_pda, _) =
+                Pubkey::find_program_address(expected_balance_seeds, ctx.program_id);
+            require!(
+                balance_acc.key() == expected_pda,
+                SableError::InvalidRecipientAccounts
+            );
+
+            // Ensure balance is delegated
+            require!(
+                balance_acc.owner != ctx.program_id,
+                SableError::NotDelegated
+            );
+
+            account_infos.push(balance_acc.clone());
+        }
+
+        let account_refs: Vec<&AccountInfo> = account_infos.iter().collect();
+
+        // CPI commit and undelegate all accounts in one call
+        commit_and_undelegate_accounts(
+            &ctx.accounts.payer.to_account_info(),
+            account_refs,
+            &ctx.accounts.magic_context,
+            &ctx.accounts.magic_program.to_account_info(),
+            None,
+        )
+        .map_err(|_| error!(SableError::CommitFailed))?;
+
+        emit!(CommitUndelegateEvent {
+            owner: owner_key,
+            mint_count: mint_list.len() as u8,
+            mints: mint_list,
+        });
+
+        Ok(())
     }
 }
 
@@ -870,6 +1087,7 @@ pub struct ExternalSendBatch<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+#[delegate]
 #[derive(Accounts)]
 #[instruction(mint_list: Vec<Pubkey>)]
 pub struct DelegateUserStateAndBalances<'info> {
@@ -877,14 +1095,15 @@ pub struct DelegateUserStateAndBalances<'info> {
     pub owner: Signer<'info>,
 
     #[account(
+        mut,
+        del,
         seeds = [USER_STATE_SEED.as_bytes(), owner.key().as_ref()],
         bump = user_state.bump,
     )]
     pub user_state: Account<'info, UserState>,
-
-    pub system_program: Program<'info, System>,
 }
 
+#[commit]
 #[derive(Accounts)]
 #[instruction(mint_list: Vec<Pubkey>)]
 pub struct CommitAndUndelegateUserStateAndBalances<'info> {
@@ -893,13 +1112,9 @@ pub struct CommitAndUndelegateUserStateAndBalances<'info> {
 
     pub owner: SystemAccount<'info>,
 
-    #[account(
-        seeds = [USER_STATE_SEED.as_bytes(), owner.key().as_ref()],
-        bump = user_state.bump,
-    )]
-    pub user_state: Account<'info, UserState>,
-
-    pub system_program: Program<'info, System>,
+    /// CHECK: This account is delegated (owned by delegation program), validated in instruction
+    #[account(mut)]
+    pub user_state: AccountInfo<'info>,
 }
 
 // Constants
