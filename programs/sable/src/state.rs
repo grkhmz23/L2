@@ -25,6 +25,29 @@ impl UserState {
     pub const SIZE: usize = 32 + 1 + 8 + 4;
 }
 
+/// Spend policy for an agent
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SpendPolicy {
+    pub per_tx_limit: u64,          // 0 = no cap
+    pub daily_limit: u64,           // 0 = no cap
+    pub total_limit: u64,           // lifetime cap, 0 = no cap
+    pub counterparty_mode: CounterpartyMode,  // enum: Any | AllowlistOnly
+    pub allowed_counterparties: [Pubkey; 4], // zero pubkey = slot unused
+    pub allowed_mints: [Pubkey; 4], // zero pubkey = slot unused; max 4
+    pub expires_at: i64,            // unix seconds, 0 = never
+}
+
+impl SpendPolicy {
+    pub const SIZE: usize = 8 + 8 + 8 + 1 + 128 + 128 + 8;
+}
+
+/// Counterparty mode for spend policy
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CounterpartyMode {
+    Any = 0,
+    AllowlistOnly = 1,
+}
+
 /// Agent state PDA - hierarchical agent subaccount
 #[account]
 pub struct AgentState {
@@ -40,10 +63,26 @@ pub struct AgentState {
     pub frozen: bool,
     pub revoked: bool,
     pub created_at: i64,
+    pub policy: SpendPolicy,
 }
 
 impl AgentState {
-    pub const SIZE: usize = 1 + 1 + 1 + 32 + 32 + 32 + 32 + 4 + 4 + 1 + 1 + 8;
+    pub const SIZE: usize = 1 + 1 + 1 + 32 + 32 + 32 + 32 + 4 + 4 + 1 + 1 + 8 + SpendPolicy::SIZE;
+}
+
+/// Agent counters PDA - running spend counters (keeps AgentState small)
+#[account]
+#[derive(Debug)]
+pub struct AgentCounters {
+    pub agent: Pubkey,
+    pub bump: u8,
+    pub spent_total: u64,
+    pub spent_today: u64,
+    pub current_day: i64,           // unix day index (block_time / 86400)
+}
+
+impl AgentCounters {
+    pub const SIZE: usize = 32 + 1 + 8 + 8 + 8;
 }
 
 /// Kind of parent account for an agent

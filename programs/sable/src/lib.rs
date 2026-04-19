@@ -16,6 +16,7 @@ use ephemeral_rollups_sdk::ephem::commit_and_undelegate_accounts;
 pub mod error;
 pub mod events;
 pub mod instructions;
+pub mod policy;
 pub mod state;
 
 use error::*;
@@ -569,6 +570,11 @@ pub mod sable {
     /// Close an agent. Only the root_user owner can close.
     pub fn close_agent(ctx: Context<CloseAgent>) -> Result<()> {
         instructions::agent::close_agent(ctx)
+    }
+
+    /// Update an agent's spend policy. Only the root_user owner can set policy.
+    pub fn set_policy(ctx: Context<SetPolicy>, policy: SpendPolicy) -> Result<()> {
+        instructions::agent::set_policy(ctx, policy)
     }
 
     /// Delegate UserState and UserBalance PDAs to the Ephemeral Rollup.
@@ -1144,3 +1150,4 @@ pub const VAULT_AUTHORITY_SEED: &str = "vault_authority";
 pub const MAX_BATCH_TRANSFER_RECIPIENTS: usize = 15;
 pub const MAX_MINTS_PER_DELEGATION: usize = 10;
 pub const MAX_MINTS_PER_SETUP: usize = 9; // wSOL + 9 additional = 10 total
+pub const AGENT_COUNTERS_SEED: &str = "agent_counters";

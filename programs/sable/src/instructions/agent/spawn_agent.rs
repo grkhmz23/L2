@@ -1,11 +1,12 @@
 use anchor_lang::prelude::*;
 use crate::error::SableError;
 use crate::events::AgentSpawned;
-use crate::state::{AgentState, ParentKind, UserState};
+use crate::state::{AgentCounters, AgentState, CounterpartyMode, ParentKind, SpendPolicy, UserState};
 
 pub const MAX_AGENTS_PER_PARENT: usize = 64;
 pub const MAX_DEPTH: u32 = 4;
 pub const AGENT_STATE_SEED: &str = "agent_state";
+pub const AGENT_COUNTERS_SEED: &str = "agent_counters";
 
 #[derive(Accounts)]
 #[instruction(parent_kind: ParentKind, label: String, nonce: u32)]
@@ -28,6 +29,18 @@ pub struct SpawnAgent<'info> {
         bump
     )]
     pub new_agent: Account<'info, AgentState>,
+
+    #[account(
+        init,
+        payer = payer,
+        space = 8 + AgentCounters::SIZE,
+        seeds = [
+            AGENT_COUNTERS_SEED.as_bytes(),
+            new_agent.key().as_ref(),
+        ],
+        bump
+    )]
+    pub new_agent_counters: Account<'info, AgentCounters>,
 
     #[account(mut)]
     pub parent_owner: Signer<'info>,
@@ -158,6 +171,17 @@ pub fn spawn_agent(
         }
     }
 
+    // Default policy: fully open
+    let default_policy = SpendPolicy {
+        per_tx_limit: 0,
+        daily_limit: 0,
+        total_limit: 0,
+        counterparty_mode: CounterpartyMode::Any,
+        allowed_counterparties: [Pubkey::default(); 4],
+        allowed_mints: [Pubkey::default(); 4],
+        expires_at: 0,
+    };
+
     // Initialize new agent
     let new_agent = &mut ctx.accounts.new_agent;
     new_agent.version = 1;
@@ -172,6 +196,15 @@ pub fn spawn_agent(
     new_agent.frozen = false;
     new_agent.revoked = false;
     new_agent.created_at = clock.unix_timestamp;
+    new_agent.policy = default_policy;
+
+    // Initialize agent counters
+    let new_agent_counters = &mut ctx.accounts.new_agent_counters;
+    new_agent_counters.agent = new_agent.key();
+    new_agent_counters.bump = ctx.bumps.new_agent_counters;
+    new_agent_counters.spent_total = 0;
+    new_agent_counters.spent_today = 0;
+    new_agent_counters.current_day = 0;
 
     emit!(AgentSpawned {
         agent: new_agent.key(),

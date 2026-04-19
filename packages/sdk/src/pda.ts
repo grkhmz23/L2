@@ -5,6 +5,7 @@ import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token
 const CONFIG_SEED = Buffer.from('config');
 const USER_STATE_SEED = Buffer.from('user_state');
 const AGENT_STATE_SEED = Buffer.from('agent_state');
+const AGENT_COUNTERS_SEED = Buffer.from('agent_counters');
 const USER_BALANCE_SEED = Buffer.from('user_balance');
 const VAULT_AUTHORITY_SEED = Buffer.from('vault_authority');
 
@@ -51,6 +52,16 @@ export class PdaHelper {
         parent.toBuffer(),
         Buffer.from(new Uint32Array([nonce]).buffer),
       ],
+      this.programId
+    );
+  }
+
+  /**
+   * Derive AgentCounters PDA for a given agent
+   */
+  deriveAgentCounters(agent: PublicKey): [PublicKey, number] {
+    return PublicKey.findProgramAddressSync(
+      [AGENT_COUNTERS_SEED, agent.toBuffer()],
       this.programId
     );
   }

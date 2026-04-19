@@ -91,4 +91,22 @@ pub enum SableError {
 
     #[msg("Too many agents for this parent")]
     TooManyAgents,
+
+    #[msg("Spend policy has expired")]
+    PolicyExpired,
+
+    #[msg("Counterparty not allowed by policy")]
+    CounterpartyNotAllowed,
+
+    #[msg("Mint not allowed by policy")]
+    MintNotAllowed,
+
+    #[msg("Per-transaction limit exceeded")]
+    PerTxLimitExceeded,
+
+    #[msg("Daily spend limit exceeded")]
+    DailyLimitExceeded,
+
+    #[msg("Total lifetime spend limit exceeded")]
+    TotalLimitExceeded,
 }

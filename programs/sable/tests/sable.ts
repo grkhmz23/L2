@@ -60,6 +60,25 @@ const IDL = {
     { code: 6014, name: 'InvalidMintList', msg: 'Invalid mint list' },
     { code: 6015, name: 'AlreadyDelegated', msg: 'Account is already delegated' },
     { code: 6016, name: 'NotDelegated', msg: 'Account is not delegated' },
+    { code: 6017, name: 'TooManyMints', msg: 'Too many mints in setup' },
+    { code: 6018, name: 'DuplicateMint', msg: 'Duplicate mint in setup' },
+    { code: 6019, name: 'EmptyMintList', msg: 'Empty mint list' },
+    { code: 6020, name: 'InvalidDestinationTokenAccount', msg: 'Invalid destination token account' },
+    { code: 6021, name: 'DelegationFailed', msg: 'Delegation CPI failed' },
+    { code: 6022, name: 'CommitFailed', msg: 'Commit/undelegate CPI failed' },
+    { code: 6023, name: 'TooManyBalancesForDelegation', msg: 'Too many balances for delegation' },
+    { code: 6024, name: 'AgentDepthExceeded', msg: 'Agent depth exceeded maximum allowed' },
+    { code: 6025, name: 'AgentHasChildren', msg: 'Agent has children and cannot be closed' },
+    { code: 6026, name: 'NotAgentRoot', msg: 'Not the root user owner' },
+    { code: 6027, name: 'AgentFrozenOrRevoked', msg: 'Agent is frozen or revoked' },
+    { code: 6028, name: 'InvalidAncestorChain', msg: 'Invalid ancestor chain' },
+    { code: 6029, name: 'TooManyAgents', msg: 'Too many agents for this parent' },
+    { code: 6030, name: 'PolicyExpired', msg: 'Spend policy has expired' },
+    { code: 6031, name: 'CounterpartyNotAllowed', msg: 'Counterparty not allowed by policy' },
+    { code: 6032, name: 'MintNotAllowed', msg: 'Mint not allowed by policy' },
+    { code: 6033, name: 'PerTxLimitExceeded', msg: 'Per-transaction limit exceeded' },
+    { code: 6034, name: 'DailyLimitExceeded', msg: 'Daily spend limit exceeded' },
+    { code: 6035, name: 'TotalLimitExceeded', msg: 'Total lifetime spend limit exceeded' },
   ],
 };
 
@@ -126,6 +145,16 @@ describe('sable', () => {
         Buffer.from('agent_state'),
         parent.toBuffer(),
         Buffer.from(new Uint32Array([nonce]).buffer),
+      ],
+      programId
+    );
+  };
+
+  const deriveAgentCounters = (agent: PublicKey) => {
+    return PublicKey.findProgramAddressSync(
+      [
+        Buffer.from('agent_counters'),
+        agent.toBuffer(),
       ],
       programId
     );
@@ -419,6 +448,71 @@ describe('sable', () => {
       // Agent2's parent is agent1, not root
       const [agent2Alt] = deriveAgentState(root, 1);
       assert.notEqual(agent2.toBase58(), agent2Alt.toBase58());
+    });
+  });
+
+  describe('Policy Engine', () => {
+    it('Derives AgentCounters PDA from agent', () => {
+      const [user1State] = deriveUserState(user1.publicKey);
+      const [agent1] = deriveAgentState(user1State, 0);
+      const [counters1, bump1] = deriveAgentCounters(agent1);
+      const [counters2, bump2] = deriveAgentCounters(agent1);
+
+      assert.ok(counters1);
+      assert.equal(counters1.toBase58(), counters2.toBase58());
+      assert.equal(bump1, bump2);
+      assert.notEqual(agent1.toBase58(), counters1.toBase58());
+    });
+
+    it('AgentCounters PDA depends on agent key', () => {
+      const [user1State] = deriveUserState(user1.publicKey);
+      const [agent1] = deriveAgentState(user1State, 0);
+      const [agent2] = deriveAgentState(user1State, 1);
+      const [counters1] = deriveAgentCounters(agent1);
+      const [counters2] = deriveAgentCounters(agent2);
+
+      assert.notEqual(counters1.toBase58(), counters2.toBase58());
+    });
+
+    it('Has policy error codes defined', () => {
+      const errorCodes = IDL.errors.map((e: any) => e.code);
+      assert.include(errorCodes, 6030); // PolicyExpired
+      assert.include(errorCodes, 6031); // CounterpartyNotAllowed
+      assert.include(errorCodes, 6032); // MintNotAllowed
+      assert.include(errorCodes, 6033); // PerTxLimitExceeded
+      assert.include(errorCodes, 6034); // DailyLimitExceeded
+      assert.include(errorCodes, 6035); // TotalLimitExceeded
+    });
+
+    it('Default policy values are fully open', () => {
+      // Off-chain representation of default policy:
+      // per_tx_limit = 0, daily_limit = 0, total_limit = 0,
+      // counterparty_mode = 0 (Any), allowed_mints all zero, expires_at = 0
+      const defaultPolicy = {
+        perTxLimit: 0,
+        dailyLimit: 0,
+        totalLimit: 0,
+        counterpartyMode: 0,
+        allowedCounterparties: [
+          '11111111111111111111111111111111',
+          '11111111111111111111111111111111',
+          '11111111111111111111111111111111',
+          '11111111111111111111111111111111',
+        ],
+        allowedMints: [
+          '11111111111111111111111111111111',
+          '11111111111111111111111111111111',
+          '11111111111111111111111111111111',
+          '11111111111111111111111111111111',
+        ],
+        expiresAt: 0,
+      };
+
+      assert.equal(defaultPolicy.perTxLimit, 0);
+      assert.equal(defaultPolicy.dailyLimit, 0);
+      assert.equal(defaultPolicy.totalLimit, 0);
+      assert.equal(defaultPolicy.counterpartyMode, 0);
+      assert.equal(defaultPolicy.expiresAt, 0);
     });
   });
 

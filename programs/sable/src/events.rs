@@ -93,3 +93,14 @@ pub struct AgentSpawned {
     pub label: [u8; 32],
     pub owner: Pubkey,
 }
+
+#[event]
+pub struct PolicyUpdated {
+    pub agent: Pubkey,
+    pub root_user: Pubkey,
+    pub per_tx_limit: u64,
+    pub daily_limit: u64,
+    pub total_limit: u64,
+    pub counterparty_mode: u8,
+    pub expires_at: i64,
+}
