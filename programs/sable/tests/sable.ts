@@ -75,7 +75,7 @@ describe('sable', () => {
   const user3 = Keypair.generate();
 
   // Program ID (using a dummy one for tests)
-  const programId = new PublicKey('SABLE_PROGRAM_ID_TBD');
+  const programId = new PublicKey('SaSAXcdWhyr1KD8TKRg6K7WPuxcPLZJHKEwsjQgL5Di');
 
   // PDAs
   let configPda: PublicKey;

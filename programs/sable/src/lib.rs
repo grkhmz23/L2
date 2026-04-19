@@ -21,8 +21,7 @@ use error::*;
 use events::*;
 use state::*;
 
-// NOTE: SABLE_PROGRAM_ID_TBD — replace with real deployed program ID in Prompt 3
-declare_id!("CvGdTmYZXMSibPL49xCzvghYDk156EfUVbkrd9P6devK");
+declare_id!("SaSAXcdWhyr1KD8TKRg6K7WPuxcPLZJHKEwsjQgL5Di");
 
 // wSOL mint address - always included by default
 pub const WSOL_MINT: Pubkey = pubkey!("So11111111111111111111111111111111111111112");

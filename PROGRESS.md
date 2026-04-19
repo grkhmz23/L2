@@ -4,7 +4,7 @@
 |---|--------|--------|--------|-------|
 | 1 | Rebrand & cleanup | ✅ | | Renamed L2Concept→Sable, cleaned event delegation, created docs |
 | 2 | Real ER delegation CPI | ✅ | | Delegate + commit/undelegate via ephemeral-rollups-sdk CPI. Cargo pins for edition2024 compat.
-| 3 | Declare real program ID, deploy skeleton | ☐ | | |
+| 3 | Declare real program ID, deploy skeleton | ✅ | a51cd4e | Program: SaSAXcdWhyr1KD8TKRg6K7WPuxcPLZJHKEwsjQgL5Di. Deployed + initialized on devnet. Explorer: https://explorer.solana.com/address/SaSAXcdWhyr1KD8TKRg6K7WPuxcPLZJHKEwsjQgL5Di?cluster=devnet
 | 4 | AgentState PDA + spawn/close agent | ☐ | | |
 | 5 | Spend policy engine | ☐ | | |
 | 6 | AgentBalance + agent transfer instructions | ☐ | | |

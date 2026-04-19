@@ -13,7 +13,7 @@ export interface BatchTransferInput {
 }
 
 export interface SdkConfig {
-  programId: PublicKey;
+  programId?: PublicKey;
   connection: Connection;
   wallet?: {
     publicKey: PublicKey;

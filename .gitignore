@@ -26,6 +26,9 @@ test-ledger/
 .env.local
 .env.*.local
 
+# Keypairs
+keys/
+
 # IDE
 .idea/
 .vscode/
@@ -49,3 +52,4 @@ coverage/
 
 # Next.js
 next-env.d.ts
+keys/deployer-keypair.json

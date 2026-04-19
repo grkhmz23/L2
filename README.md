@@ -104,7 +104,7 @@ The app will be available at `http://localhost:3000`.
 
 ## Program ID
 
-**Devnet/Mainnet**: `SABLE_PROGRAM_ID_TBD`
+**Devnet/Mainnet**: `SaSAXcdWhyr1KD8TKRg6K7WPuxcPLZJHKEwsjQgL5Di`
 
 ## MagicBlock Integration Details
 
@@ -156,7 +156,7 @@ const hasDelegated = await sdk.hasDelegatedAccounts(owner, mintList);
 import { SableSdk, WSOL_MINT } from '@sable/sdk';
 
 const sdk = new SableSdk({
-  programId: new PublicKey('SABLE_PROGRAM_ID_TBD'),
+  programId: new PublicKey('SaSAXcdWhyr1KD8TKRg6K7WPuxcPLZJHKEwsjQgL5Di'),
   connection,
   wallet,
 });

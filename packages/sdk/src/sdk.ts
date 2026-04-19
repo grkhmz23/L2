@@ -15,6 +15,7 @@ import {
   createTransferInstruction,
 } from '@solana/spl-token';
 import { PdaHelper } from './pda';
+import { PROGRAM_ID_DEVNET } from '@sable/common';
 import {
   SdkConfig,
   DepositParams,
@@ -52,7 +53,8 @@ export class SableSdk {
 
   constructor(config: SdkConfig) {
     this.config = config;
-    this.pda = new PdaHelper(config.programId);
+    const programId = config.programId || PROGRAM_ID_DEVNET;
+    this.pda = new PdaHelper(programId);
     
     // Create provider
     const wallet = config.wallet || ({} as any);
@@ -64,7 +66,7 @@ export class SableSdk {
 
     // Create a minimal IDL for the program
     const idl = this.createMinimalIdl();
-    this.program = new Program(idl, config.programId, this.provider);
+    this.program = new Program(idl, programId, this.provider);
   }
 
   private createMinimalIdl(): any {

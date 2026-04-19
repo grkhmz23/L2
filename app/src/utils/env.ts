@@ -23,11 +23,11 @@ export const env: EnvConfig = {
   MAGICBLOCK_RPC_URL: MAGICBLOCK_RPC_URL_ENV || null,
   MAGIC_ROUTER_URL: MAGIC_ROUTER_URL_ENV || null,
   SABLE_PROGRAM_ID:
-    PROGRAM_ID_ENV || 'SABLE_PROGRAM_ID_TBD',
+    PROGRAM_ID_ENV || 'SaSAXcdWhyr1KD8TKRg6K7WPuxcPLZJHKEwsjQgL5Di',
 };
 
 // Validate that program ID is a valid public key (skip pending value)
-if (env.SABLE_PROGRAM_ID !== 'SABLE_PROGRAM_ID_TBD') {
+if (env.SABLE_PROGRAM_ID !== 'SaSAXcdWhyr1KD8TKRg6K7WPuxcPLZJHKEwsjQgL5Di') {
   try {
     new (require('@solana/web3.js').PublicKey)(env.SABLE_PROGRAM_ID);
   } catch (error) {

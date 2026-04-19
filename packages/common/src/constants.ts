@@ -1,5 +1,10 @@
 import { PublicKey } from '@solana/web3.js';
 
+// Sable Program ID (devnet / canonical)
+export const PROGRAM_ID_DEVNET = new PublicKey(
+  'SaSAXcdWhyr1KD8TKRg6K7WPuxcPLZJHKEwsjQgL5Di'
+);
+
 // MagicBlock Delegation Program ID (mainnet)
 export const MAGICBLOCK_DELEGATION_PROGRAM_ID = new PublicKey(
   'DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh'
@@ -48,6 +53,6 @@ export function getProgramId(): PublicKey {
      process.env.NEXT_PUBLIC_SABLE_PROGRAM_ID) : 
     undefined;
   
-  const programIdStr = envProgramId || 'SABLE_PROGRAM_ID_TBD';
+  const programIdStr = envProgramId || PROGRAM_ID_DEVNET.toBase58();
   return new PublicKey(programIdStr);
 }

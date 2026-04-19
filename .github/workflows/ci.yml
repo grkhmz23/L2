@@ -91,7 +91,7 @@ jobs:
         run: pnpm app:build
         env:
           NEXT_PUBLIC_SOLANA_RPC_URL: http://127.0.0.1:8899
-          NEXT_PUBLIC_SABLE_PROGRAM_ID: SABLE_PROGRAM_ID_TBD
+          NEXT_PUBLIC_SABLE_PROGRAM_ID: SaSAXcdWhyr1KD8TKRg6K7WPuxcPLZJHKEwsjQgL5Di
 
   scan-placeholders:
     runs-on: ubuntu-latest
