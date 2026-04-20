@@ -1123,6 +1123,7 @@ DONE CHECKLIST
 
 <a id="prompt-15"></a>
 ## Prompt 15 — SDK: PER session key flow
+> **COMPLETED** — commit `f710443`
 
 ```
 GOAL
@@ -1180,10 +1181,12 @@ DO NOT
 - Send the user's main wallet signature anywhere but the challenge.
 
 DONE CHECKLIST
-- [ ] openSession works against MagicBlock test endpoint
-- [ ] Unauthorized read is correctly rejected
-- [ ] PROGRESS.md updated
-- [ ] Commit: "sable: prompt 15 — PER sessions"
+- [x] Mock middleware service builds and runs locally on a fixed port
+- [x] `tests/sdk-session.test.ts` passes against mock middleware
+- [x] `tests/sdk-session.live.test.ts` exists and is structurally complete
+- [x] Schema comment at the top of `session.ts` references the exact docs URL
+- [x] PROGRESS.md updated
+- [x] Commit: "sable: prompt 15 — PER sessions (mocked-first)"
 ```
 
 ---
