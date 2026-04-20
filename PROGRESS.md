@@ -10,7 +10,7 @@
 | 6 | AgentBalance + agent transfer instructions | ✅ | 7d1078b | AgentBalance, RecipientKind, fund_agent, defund_agent, agent_transfer, agent_transfer_batch. 17 Rust unit tests pass. cargo build-sbf passes.
 | 7 | Parent control: freeze, revoke, update_policy | ✅ | 01e287d | freeze_agent, unfreeze_agent, revoke_agent instructions. Ancestor-chain auth helper. Events: AgentFrozen, AgentUnfrozen, AgentRevoked. cargo build-sbf passes. cargo test --package sable passes. pnpm -r build and typecheck pass. |
 | 8 | Task PDA + create_task / cancel_task | ✅ | 06a5a06 | Task, TaskEscrow, TaskState, PosterKind. create_task + cancel_task instructions. Policy check for agent posters. Budget locked in escrow. Tests for PDA derivations, state machine, deadlines, cancellation rules. |
-| 9 | Bid PDA + commit_bid | ☐ | | |
+| 9 | Bid PDA + commit_bid | ✅ | a4359f6 | Bid, BidderKind, commit_bid instruction. Policy check for agent bidders. Deposit locked in escrow. Commit hash scheme documented in ARCHITECTURE.md. Tests for PDA derivations, hash scheme, constraints. |
 | 10 | reveal_bid + settle_auction | ☐ | | |
 | 11 | PER permission metadata accounts | ☐ | | |
 | 12 | SDK rename, IDL regen, module restructure | ☐ | | |

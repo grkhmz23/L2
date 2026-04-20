@@ -140,3 +140,10 @@ pub struct TaskCancelled {
     pub poster: Pubkey,
     pub refund: u64,
 }
+
+#[event]
+pub struct BidCommitted {
+    pub task: Pubkey,
+    pub bidder: Pubkey,
+    pub deposit: u64,
+}

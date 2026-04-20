@@ -155,6 +155,32 @@ pub enum PosterKind {
     Agent = 1,
 }
 
+/// Bidder kind for bids
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BidderKind {
+    User = 0,
+    Agent = 1,
+}
+
+/// Bid PDA - sealed commitment
+#[account]
+pub struct Bid {
+    pub version: u8,
+    pub bump: u8,
+    pub task: Pubkey,
+    pub bidder: Pubkey,
+    pub bidder_kind: BidderKind,
+    pub commit_hash: [u8; 32],
+    pub deposit: u64,
+    pub revealed_amount: u64,
+    pub revealed: bool,
+    pub submitted_at: i64,
+}
+
+impl Bid {
+    pub const SIZE: usize = 1 + 1 + 32 + 32 + 1 + 32 + 8 + 8 + 1 + 8;
+}
+
 /// Task PDA - auction listing
 #[account]
 pub struct Task {

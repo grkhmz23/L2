@@ -656,6 +656,16 @@ pub mod sable {
         instructions::auction::cancel_task(ctx)
     }
 
+    /// Commit a sealed bid to a task.
+    pub fn commit_bid(
+        ctx: Context<CommitBid>,
+        bidder_kind: BidderKind,
+        commit_hash: [u8; 32],
+        deposit: u64,
+    ) -> Result<()> {
+        instructions::auction::commit_bid(ctx, bidder_kind, commit_hash, deposit)
+    }
+
     /// Delegate UserState and UserBalance PDAs to the Ephemeral Rollup.
     ///
     /// Remaining accounts (per mint in mint_list, in order):

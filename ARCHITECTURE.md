@@ -101,6 +101,28 @@ UserState (root)
 3. **Reveal Bid**: Bidder submits `(amount, nonce)`. Chain verifies hash match.
 4. **Settle**: Anyone can call after reveal deadline. Lowest revealed bid wins (first-price). Unrevealed deposits forfeit to poster.
 
+### Commit Hash Scheme
+
+The commitment hides the bid amount until the reveal phase:
+
+```
+commit_hash = keccak256(
+  amount.to_le_bytes(8) ||
+  nonce.to_le_bytes(8) ||
+  bidder_pubkey(32)
+)
+```
+
+- **amount**: u64 bid amount, little-endian 8 bytes.
+- **nonce**: random u64 generated client-side, little-endian 8 bytes. Must be stored securely by the bidder — without it, reveal is impossible.
+- **bidder_pubkey**: the bidder's UserState or AgentState PDA, 32 bytes. Including the bidder pubkey makes commitments non-transferable.
+
+**Worked example:**
+- amount = 42.5 USDC = 42_500_000 (6 decimals)
+- nonce = 0x9f86d081884c7d659a2feaa0c55ad015
+- bidder = `SaSAXcdWhyr1KD8TKRg6K7WPuxcPLZJHKEwsjQgL5Di`
+- hash = `keccak256([0x80, 0x2c, 0x86, 0x02, 0x00, 0x00, 0x00, 0x00, 0x15, 0xd0, 0x5a, 0xc5, 0xa0, 0xfe, 0xa2, 0x59, 0xd6, 0xc7, 0x84, 0x88, 0x81, 0xd0, 0x86, 0x9f, ...bidder_bytes])`
+
 ## x402 Payment Flow
 
 1. Agent calls merchant API without payment header

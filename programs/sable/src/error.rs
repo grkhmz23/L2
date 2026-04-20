@@ -130,4 +130,7 @@ pub enum SableError {
 
     #[msg("Task is in wrong state for this operation")]
     TaskWrongState,
+
+    #[msg("Deposit is below the task minimum")]
+    DepositBelowMinimum,
 }

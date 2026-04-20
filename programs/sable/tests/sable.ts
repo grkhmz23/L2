@@ -86,6 +86,7 @@ const IDL = {
     { code: 6040, name: 'TaskNotCancellable', msg: 'Task cannot be cancelled' },
     { code: 6041, name: 'TaskEscrowMismatch', msg: 'Task escrow does not match task' },
     { code: 6042, name: 'TaskWrongState', msg: 'Task is in wrong state for this operation' },
+    { code: 6043, name: 'DepositBelowMinimum', msg: 'Deposit is below the task minimum' },
   ],
 };
 
