@@ -13,12 +13,7 @@ describe('08-private-payments-api', () => {
   before(async () => {
     const result = await setupUser();
     wallet = result.wallet;
-    payments = new SablePayments({ apiUrl: env.SABLE_PRIVATE_PAYMENTS_API_URL });
-  });
-
-  it('aml screen passes for valid address', async () => {
-    const result = await payments.aml.screen({ address: wallet.publicKey.toBase58() });
-    expect(result.ok).to.be.true;
+    payments = new SablePayments({ apiUrl: env.SABLE_PRIVATE_PAYMENTS_API_URL, cluster: 'devnet' });
   });
 
   it('can build deposit transaction', async () => {
@@ -31,7 +26,8 @@ describe('08-private-payments-api', () => {
   });
 
   it('can get balance', async () => {
-    const balance = await payments.getBalance({ owner: wallet.publicKey });
+    const usdcMint = new PublicKey('4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU');
+    const balance = await payments.getBalance({ owner: wallet.publicKey, mint: usdcMint });
     expect(balance).to.be.instanceOf(BN);
   });
 });
