@@ -45,3 +45,152 @@
 
 Status: ☐ not started · 🔄 in progress · ✅ done · ⚠️ blocked
 Deferred: — nothing deferred · CREDS waiting on credentials · RESOLVED deferred item completed in Prompt 24
+
+## PR 7g — Second Integration Suite Report (post 7e + 7f)
+
+**Run date:** 2026-04-20  
+**Pre-flight:**
+- Deployer (`8kT3TNseXvndt8Xz9teRZ6Z4ygDrZqiTxNAw8pQApGAF`): 0.994 SOL (< 6 SOL threshold)
+- Test bank (`FcPa7kKn791nvnKSajNBSyVNDibaZrrHeUtthsf9xurs`): 6.396 SOL (≥ 4 SOL)
+- No Helius devnet API key available; used public RPC
+- Amendment 03 env vars passed on command line
+- 3-second sleep injected into every spec `before()` hook
+
+**Summary:** 13 passing / 18 failing / 31 total
+
+---
+
+### 01-treasury
+| Test | Result | Category |
+|------|--------|----------|
+| user state exists | ✅ PASS | — |
+| user balance exists for mint | ✅ PASS | — |
+| can deposit tokens | ✅ PASS | — |
+| can transfer batch | ✅ PASS | — |
+| afterEach conservation check | ❌ FAIL | RPC rate limit / flake |
+
+**Notes:** All functional tests pass. `afterEach` fails on `getParsedTokenAccountsByOwner` 429. The `TransferItem.kind` schema alignment (PR 7f) is confirmed working — no `InstructionDidNotDeserialize`.
+
+---
+
+### 02-agents
+| Test | Result | Category |
+|------|--------|----------|
+| can spawn a top-level agent | ❌ FAIL | SDK/IDL schema mismatch |
+| can spawn a sub-agent | ❌ FAIL | SDK/IDL schema mismatch |
+| can fund an agent | ❌ FAIL | SDK/IDL schema mismatch |
+| can transfer from agent to user | ❌ FAIL | SDK/IDL schema mismatch |
+| afterEach conservation check | ❌ FAIL | RPC rate limit / flake |
+
+**Error signatures:**
+1. `Buffer.readUInt32LE` bounds error at `agents.js:152` — `spawnAgent` reads `agent_count` from UserState account data at offset 49, but fresh-keypair UserState has a different discriminator/size after the 0.32 redeploy.
+2. `Cannot read properties of undefined (reading 'toBase58')` — `getAccountInfo` returns undefined because the fetched account doesn't match expected PDA (agent state lookup returns null).
+3. `Cannot read properties of undefined (reading 'toBuffer')` — `deriveAgentBalance` receives undefined agent pubkey because earlier spawn failed.
+
+**Root cause:** The SDK's `spawnAgent` logic assumes UserState/AgentState byte layouts from the pre-7f IDL. After the program redeploy at slot 456905626, account sizes/discriminators changed and the SDK's hard-coded offsets are stale.
+
+---
+
+### 03-policy
+| Test | Result | Category |
+|------|--------|----------|
+| beforeAll hook | ❌ FAIL | SDK/IDL schema mismatch |
+
+**Error:** Same `Buffer.readUInt32LE` bounds error in `spawnAgent` (policy spec spawns an agent in `beforeAll`).
+
+---
+
+### 04-auctions
+| Test | Result | Category |
+|------|--------|----------|
+| can create a task | ❌ FAIL | SDK/IDL schema mismatch |
+| can commit bids | ❌ FAIL | SDK/IDL schema mismatch |
+| can reveal bids after commit deadline | ❌ FAIL | test setup issue |
+| can settle auction after reveal deadline | ❌ FAIL | test setup issue |
+| afterEach conservation check | ❌ FAIL | RPC rate limit / flake |
+
+**Error signatures:**
+1. `Buffer.readUInt32LE` bounds error at `auctions.js:119` — `createTask` reads `task_count` from UserState at stale offset.
+2. `Cannot read properties of undefined (reading 'toBuffer')` — `deriveBid` receives undefined because `commitBid` is called with a null task.
+3. `Cannot read properties of null (reading 'bidCommitDeadline')` — task fetch returns null because `createTask` never succeeded, so subsequent tests read `null.bidCommitDeadline`.
+
+---
+
+### 05-delegation
+| Test | Result | Category |
+|------|--------|----------|
+| can delegate user state and balances | ❌ FAIL | SDK/IDL schema mismatch |
+| can commit and undelegate | ❌ FAIL | SDK/IDL schema mismatch |
+
+**Error signatures:**
+1. `Account 'bufferUserState' not provided.` — The IDL for `delegateUserStateAndBalances` expects `bufferUserState` in accounts, but the SDK's `DelegationModule.delegate()` only passes `owner`, `userState`, `systemProgram`.
+2. `Account 'magicProgram' not provided.` — The IDL for `commitAndUndelegateUserStateAndBalances` expects `magicProgram`, but `DelegationModule.commitAndUndelegate()` doesn't provide it.
+
+**PER additional questions:**
+- `verifyTeeRpcIntegrity`: **Never reached** — test fails at instruction building before any TEE call.
+- `getDelegationStatus` ER validator pubkey: **Never reached**.
+- TEE session established: **Never reached**.
+
+---
+
+### 06-per-permissions
+| Test | Result | Category |
+|------|--------|----------|
+| auto-created PER permission for user balance | ✅ PASS | — |
+
+**PER additional questions:**
+- `verifyTeeRpcIntegrity`: **Not called** — this spec only checks that the PER permission PDA exists and is owned by `PERMISSION_PROGRAM_ID`.
+- `getDelegationStatus` ER validator pubkey: **Not checked**.
+- TEE session established: **Not tested**.
+
+---
+
+### 07-x402
+| Test | Result | Category |
+|------|--------|----------|
+| beforeAll hook | ❌ FAIL | SDK/IDL schema mismatch |
+
+**Error:** Same `Buffer.readUInt32LE` bounds error in `spawnAgent` (x402 spec spawns an agent in `beforeAll`).
+
+---
+
+### 08-private-payments-api
+| Test | Result | Category |
+|------|--------|----------|
+| aml screen passes for valid address | ❌ FAIL | MagicBlock API mismatch |
+| can build deposit transaction | ❌ FAIL | MagicBlock API mismatch |
+| can get balance | ❌ FAIL | MagicBlock API mismatch |
+
+**Error:** `TypeError: fetch failed` / `AggregateError [ECONNREFUSED]` — `SablePayments.request()` cannot connect to `https://payments.magicblock.app`. The endpoint is either down, geo-blocked, or requires VPN/credentials.
+
+**Payments API additional questions:**
+- Privacy value sent: **None** — connection refused before any HTTP request body is sent.
+- 400 response body: **None** — all failures are TCP `ECONNREFUSED`, not HTTP 4xx.
+
+---
+
+### Live tests (01-08)
+All 8 live "connects to live network" tests **✅ PASS**. These are shallow smoke tests that only instantiate `SableClient` and call `getUserState()` / `getUserBalance()`. They confirm:
+- Devnet RPC is reachable
+- Program ID is correct
+- IDL deserialization works for read-only account fetches
+
+---
+
+### Cross-cutting themes
+
+| Theme | Affected specs | Root cause |
+|-------|---------------|------------|
+| **Hard-coded account-data offsets** | 02, 03, 04, 07 | SDK reads `agent_count` (offset 49), `child_count` (offset 143), `task_count` (offset 57) directly from account buffers. The 0.32 redeploy changed account layouts. |
+| **Missing instruction accounts** | 05 | `delegate` / `commitAndUndelegate` don't supply `bufferUserState` or `magicProgram` expected by the IDL. Likely the Rust instruction signatures changed when MagicBlock CPIs were added. |
+| **Devnet RPC 429** | 01, 02, 04 afterEach | Public devnet RPC throttles `getParsedTokenAccountsByOwner` and `getAccountInfo` after ~4-5 rapid calls. Mitigation: 3s sleep between specs + 2s in `setupUser()` helps but isn't enough for the conservation check's burst pattern. |
+| **Payments API unreachable** | 08 | `payments.magicblock.app` refuses TCP connections. May require VPN, auth header, or different endpoint. |
+
+---
+
+### Recommendations for next PRs
+
+1. **PR 7h — Account offset audit**: Replace all direct buffer offset reads in `agents.ts`, `auctions.ts` with Anchor 0.32 `.account.*.fetch()` which handles discriminators automatically. The `spawnAgent` `readUInt32LE(49)` for `agent_count` and `readUInt32LE(143)` for `child_count` must go.
+2. **PR 7i — Delegation account alignment**: Update `DelegationModule.delegate()` to pass `bufferUserState` and `DelegationModule.commitAndUndelegate()` to pass `magicProgram` (pubkey `DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh`).
+3. **PR 7j — Conservation check retry**: Add exponential backoff to `checkConservation()` or cache vault ATAs to reduce RPC burst.
+4. **PR 7k — Payments API endpoint verification**: Confirm whether `payments.magicblock.app` is the correct live endpoint or if it needs auth/VPN.
