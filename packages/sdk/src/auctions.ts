@@ -57,40 +57,57 @@ function parseTaskState(state: any): TaskState {
   return 'cancelled';
 }
 
+/** Convert camelCase keys to snake_case recursively (Anchor 0.32 returns camelCase) */
+function toSnakeCase(obj: any): any {
+  if (obj instanceof PublicKey || obj instanceof BN) return obj;
+  if (Array.isArray(obj)) return obj.map(toSnakeCase);
+  if (typeof obj === 'object' && obj !== null) {
+    const result: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      const snake = key.replace(/[A-Z]/g, (c) => '_' + c.toLowerCase());
+      result[snake] = toSnakeCase(value);
+    }
+    return result;
+  }
+  return obj;
+}
+
 function parseTaskAccount(pubkey: PublicKey, data: any): TaskSnapshot {
+  const d = toSnakeCase(data);
   return {
     pubkey,
-    version: data.version,
-    bump: data.bump,
-    poster: data.poster,
-    posterKind: data.poster_kind?.user !== undefined ? 'user' : 'agent',
-    mint: data.mint,
-    budget: data.budget,
-    minDeposit: data.min_deposit,
-    specHash: data.spec_hash,
-    bidCommitDeadline: data.bid_commit_deadline,
-    bidRevealDeadline: data.bid_reveal_deadline,
-    state: parseTaskState(data.state),
-    winningBidder: data.winning_bidder,
-    winningBid: data.winning_bid,
-    bidCount: data.bid_count,
-    taskId: data.task_id,
+    version: d.version,
+    bump: d.bump,
+    poster: d.poster,
+    posterKind: d.poster_kind?.user !== undefined ? 'user' : 'agent',
+    mint: d.mint,
+    budget: d.budget,
+    minDeposit: d.min_deposit,
+    specHash: d.spec_hash,
+    bidCommitDeadline: d.bid_commit_deadline,
+    bidRevealDeadline: d.bid_reveal_deadline,
+    state: parseTaskState(d.state),
+    winningBidder: d.winning_bidder,
+    winningBid: d.winning_bid,
+    bidCount: d.bid_count,
+    taskId: d.task_id,
   };
 }
 
 function parseBidAccount(pubkey: PublicKey, data: any): BidSnapshot {
+  const d = toSnakeCase(data);
   return {
     pubkey,
-    version: data.version,
-    bump: data.bump,
-    task: data.task,
-    bidder: data.bidder,
-    bidderKind: data.bidder_kind?.user !== undefined ? 'user' : 'agent',
-    commitHash: data.commit_hash,
-    deposit: data.deposit,
-    revealedAmount: data.revealed_amount,
-    revealed: data.revealed,
-    submittedAt: data.submitted_at,
+    version: d.version,
+    bump: d.bump,
+    task: d.task,
+    bidder: d.bidder,
+    bidderKind: d.bidder_kind?.user !== undefined ? 'user' : 'agent',
+    commitHash: d.commit_hash,
+    deposit: d.deposit,
+    revealedAmount: d.revealed_amount,
+    revealed: d.revealed,
+    submittedAt: d.submitted_at,
   };
 }
 
@@ -178,22 +195,23 @@ export class AuctionsModule {
 
     const posterOwner = this.client.walletPublicKey!;
 
-    // Fetch poster to get current task_count
-    const posterAccount = await this.client.config.connection.getAccountInfo(poster);
-    if (!posterAccount) {
-      throw new Error('Poster account not found');
-    }
+    // Resolve poster PDA: when posterKind is 'user', caller passes owner pubkey;
+    // we need the UserState PDA for accounts and PDA derivation.
+    const posterPda =
+      posterKind === 'user'
+        ? this.client.pda.deriveUserState(poster)[0]
+        : poster;
 
     let taskId: number;
     if (posterKind === 'user') {
-      // UserState: task_count at offset 57 (after agent_count at 49)
-      taskId = posterAccount.data.readUInt32LE(57);
+      const userState = await this.client.program.account.userState.fetch(posterPda);
+      taskId = userState.task_count;
     } else {
-      // AgentState: task_count at offset 151 (after child_count at 143)
-      taskId = posterAccount.data.readUInt32LE(151);
+      const agentState = await this.client.program.account.agentState.fetch(posterPda);
+      taskId = agentState.task_count;
     }
 
-    const [task] = this.client.pda.deriveTask(poster, taskId);
+    const [task] = this.client.pda.deriveTask(posterPda, taskId);
     const [taskEscrow] = this.client.pda.deriveTaskEscrow(task);
     const [permission] = this.client.pda.derivePermission(taskEscrow);
 
@@ -224,9 +242,9 @@ export class AuctionsModule {
     let remainingAccounts: { pubkey: PublicKey; isWritable: boolean; isSigner: boolean }[] = [];
     let agentCounters: PublicKey = PublicKey.default;
     if (posterKind === 'agent') {
-      const ancestors = await this.buildAncestorChainForAuth(poster);
+      const ancestors = await this.buildAncestorChainForAuth(posterPda);
       remainingAccounts = asRemainingAccounts(ancestors);
-      [agentCounters] = this.client.pda.deriveAgentCounters(poster);
+      [agentCounters] = this.client.pda.deriveAgentCounters(posterPda);
     }
 
     const tx = await this.client.program.methods
@@ -241,7 +259,7 @@ export class AuctionsModule {
       )
       .accounts({
         posterOwner,
-        poster,
+        poster: posterPda,
         posterBalance,
         task,
         taskEscrow,
@@ -502,16 +520,13 @@ export class AuctionsModule {
    * List all bids for a given task.
    */
   async getTaskBids(task: PublicKey): Promise<BidSnapshot[]> {
-    const accounts = await this.client.program.account.bid.all([
-      {
-        memcmp: {
-          offset: 8 + 1 + 1, // Skip disc + version + bump
-          bytes: task.toBase58(),
-        },
-      },
-    ]);
-
-    return accounts.map((a: any) => parseBidAccount(a.publicKey, a.account));
+    const accounts = await this.client.program.account.bid.all();
+    return accounts
+      .filter((a: any) => {
+        const d = toSnakeCase(a.account);
+        return d.task?.toBase58() === task.toBase58();
+      })
+      .map((a: any) => parseBidAccount(a.publicKey, a.account));
   }
 
   /**
@@ -524,31 +539,17 @@ export class AuctionsModule {
     poster?: PublicKey;
     state?: TaskState;
   } = {}): Promise<TaskSnapshot[]> {
-    const filters: any[] = [];
+    const accounts = await this.client.program.account.task.all();
+    let tasks = accounts.map((a: any) => parseTaskAccount(a.publicKey, a.account));
 
     if (poster) {
-      filters.push({
-        memcmp: {
-          offset: 8 + 1 + 1, // Skip disc + version + bump
-          bytes: poster.toBase58(),
-        },
-      });
+      tasks = tasks.filter((t: TaskSnapshot) => t.poster.toBase58() === poster.toBase58());
     }
 
     if (state) {
-      // TaskState enum: Open=0, Revealing=1, Settled=2, Cancelled=3
-      const stateByte =
-        state === 'open' ? 0 : state === 'revealing' ? 1 : state === 'settled' ? 2 : 3;
-      filters.push({
-        memcmp: {
-          offset: 8 + 1 + 1 + 32 + 1 + 32 + 8 + 8 + 32 + 8 + 8, // spec_hash + deadlines + state
-          bytes: Buffer.from([stateByte]).toString('base64'),
-          encoding: 'base64',
-        },
-      });
+      tasks = tasks.filter((t: TaskSnapshot) => t.state === state);
     }
 
-    const accounts = await this.client.program.account.task.all(filters);
-    return accounts.map((a: any) => parseTaskAccount(a.publicKey, a.account));
+    return tasks;
   }
 }

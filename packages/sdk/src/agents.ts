@@ -1,4 +1,4 @@
-import { PublicKey, SystemProgram, SYSVAR_CLOCK_PUBKEY } from '@solana/web3.js';
+import { PublicKey, SystemProgram, SYSVAR_CLOCK_PUBKEY, Transaction } from '@solana/web3.js';
 import { BN } from '@coral-xyz/anchor';
 import type { SableClient } from './client';
 import { PERMISSION_PROGRAM_ID } from './pda';
@@ -49,6 +49,21 @@ function parseLabel(labelArr: number[]): string {
   return buf.slice(0, nullIdx === -1 ? 32 : nullIdx).toString('utf8');
 }
 
+/** Convert camelCase keys to snake_case recursively (Anchor 0.32 returns camelCase) */
+function toSnakeCase(obj: any): any {
+  if (obj instanceof PublicKey || obj instanceof BN) return obj;
+  if (Array.isArray(obj)) return obj.map(toSnakeCase);
+  if (typeof obj === 'object' && obj !== null) {
+    const result: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      const snake = key.replace(/[A-Z]/g, (c) => '_' + c.toLowerCase());
+      result[snake] = toSnakeCase(value);
+    }
+    return result;
+  }
+  return obj;
+}
+
 function buildSpendPolicy(policy: SpendPolicy): any {
   const padPubkeys = (arr: PublicKey[]) => {
     const out = [...arr];
@@ -71,33 +86,34 @@ function buildSpendPolicy(policy: SpendPolicy): any {
 }
 
 function parseAgentAccount(pubkey: PublicKey, data: any): AgentSnapshot {
+  const d = toSnakeCase(data);
   return {
     pubkey,
-    version: data.version,
-    bump: data.bump,
-    parentKind: data.parent_kind?.user !== undefined ? 'user' : 'agent',
-    parent: data.parent,
-    owner: data.owner,
-    rootUser: data.root_user,
-    label: parseLabel(data.label),
-    nonce: data.nonce,
-    childCount: data.child_count,
-    frozen: data.frozen,
-    revoked: data.revoked,
-    createdAt: data.created_at,
+    version: d.version,
+    bump: d.bump,
+    parentKind: d.parent_kind?.user !== undefined ? 'user' : 'agent',
+    parent: d.parent,
+    owner: d.owner,
+    rootUser: d.root_user,
+    label: parseLabel(d.label),
+    nonce: d.nonce,
+    childCount: d.child_count,
+    frozen: d.frozen,
+    revoked: d.revoked,
+    createdAt: d.created_at,
     policy: {
-      perTxLimit: data.policy.per_tx_limit,
-      dailyLimit: data.policy.daily_limit,
-      totalLimit: data.policy.total_limit,
+      perTxLimit: d.policy.per_tx_limit,
+      dailyLimit: d.policy.daily_limit,
+      totalLimit: d.policy.total_limit,
       counterpartyMode:
-        data.policy.counterparty_mode?.any !== undefined
+        d.policy.counterparty_mode?.any !== undefined
           ? 'any'
           : 'allowlistOnly',
-      allowedCounterparties: data.policy.allowed_counterparties,
-      allowedMints: data.policy.allowed_mints,
-      expiresAt: data.policy.expires_at,
+      allowedCounterparties: d.policy.allowed_counterparties,
+      allowedMints: d.policy.allowed_mints,
+      expiresAt: d.policy.expires_at,
     },
-    taskCount: data.task_count,
+    taskCount: d.task_count,
   };
 }
 
@@ -209,46 +225,53 @@ export class AgentsModule {
     const parentOwner = this.client.walletPublicKey!;
     const payer = parentOwner;
 
-    // Fetch parent to get current count (nonce)
-    const parentAccount = await this.client.config.connection.getAccountInfo(
-      parent
-    );
-    if (!parentAccount) {
-      throw new Error('Parent account not found');
-    }
+    // Resolve parent PDA: when parentKind is 'user', caller passes owner pubkey;
+    // we need the UserState PDA for accounts and PDA derivation.
+    const parentPda =
+      parentKind === 'user'
+        ? this.client.pda.deriveUserState(parent)[0]
+        : parent;
 
     let nonce: number;
     if (parentKind === 'user') {
-      // UserState: agent_count at offset 49
-      nonce = parentAccount.data.readUInt32LE(49);
+      const userState = await this.client.program.account.userState.fetch(parentPda);
+      nonce = userState.agent_count;
     } else {
-      // AgentState: child_count at offset 143
-      nonce = parentAccount.data.readUInt32LE(143);
+      const agentState = await this.client.program.account.agentState.fetch(parentPda);
+      nonce = agentState.child_count;
     }
 
-    const [agent] = this.client.pda.deriveAgentState(parent, nonce);
+    const [agent] = this.client.pda.deriveAgentState(parentPda, nonce);
     const [agentCounters] = this.client.pda.deriveAgentCounters(agent);
 
     // Build ancestor chain remaining accounts for Agent parent
     let remainingAccounts: { pubkey: PublicKey; isWritable: boolean; isSigner: boolean }[] = [];
     if (parentKind === 'agent') {
-      const ancestors = await this.buildAncestorChainForSpawn(parent);
+      const ancestors = await this.buildAncestorChainForSpawn(parentPda);
       remainingAccounts = asRemainingAccounts(ancestors);
     }
 
-    const tx = await this.client.program.methods
+    // Build instruction manually so we can force parent writable
+    // (program is missing #[account(mut)] on parent in SpawnAgent)
+    const ix = await this.client.program.methods
       .spawnAgent(toParentKindEnum(parentKind), label, nonce)
       .accounts({
         payer,
-        parent,
+        parent: parentPda,
         newAgent: agent,
         newAgentCounters: agentCounters,
         parentOwner,
         systemProgram: SystemProgram.programId,
       })
       .remainingAccounts(remainingAccounts)
-      .transaction();
+      .instruction();
 
+    // Force parent writable
+    ix.keys = ix.keys.map((k: { pubkey: PublicKey; isWritable: boolean; isSigner: boolean }) =>
+      k.pubkey.equals(parentPda) ? { ...k, isWritable: true } : k
+    );
+
+    const tx = new Transaction().add(ix);
     const result = await this.client.sendTransaction(tx);
     return { agent, tx: result };
   }
@@ -616,16 +639,13 @@ export class AgentsModule {
    * List all agents for a given root user.
    */
   async listAgents(rootUser: PublicKey): Promise<AgentSnapshot[]> {
-    const accounts = await this.client.program.account.agentState.all([
-      {
-        memcmp: {
-          offset: 8 + 1 + 1 + 1 + 32, // Skip disc + version + bump + parent_kind + parent
-          bytes: rootUser.toBase58(),
-        },
-      },
-    ]);
-
-    return accounts.map((a: any) => parseAgentAccount(a.publicKey, a.account));
+    const accounts = await this.client.program.account.agentState.all();
+    return accounts
+      .filter((a: any) => {
+        const d = toSnakeCase(a.account);
+        return d.root_user?.toBase58() === rootUser.toBase58();
+      })
+      .map((a: any) => parseAgentAccount(a.publicKey, a.account));
   }
 
   /**

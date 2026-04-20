@@ -109,7 +109,7 @@ async function getTestBank(): Promise<Keypair> {
   const connection = getConnection();
 
   const currentBalance = await connection.getBalance(bank.publicKey);
-  if (currentBalance < 0.5 * LAMPORTS_PER_SOL) {
+  if (currentBalance < 0.2 * LAMPORTS_PER_SOL) {
     // Need to fund. Try 10 SOL airdrop first, then split into two 5s.
     let funded = false;
     try {
@@ -133,8 +133,8 @@ async function getTestBank(): Promise<Keypair> {
     if (!funded) {
       const deployer = getWallet();
       const deployerBalance = await connection.getBalance(deployer.publicKey);
-      const transferLamports = Math.min(deployerBalance - LAMPORTS_PER_SOL, 5 * LAMPORTS_PER_SOL);
-      if (transferLamports < 0.5 * LAMPORTS_PER_SOL) {
+      const transferLamports = Math.min(deployerBalance - 0.01 * LAMPORTS_PER_SOL, 5 * LAMPORTS_PER_SOL);
+      if (transferLamports < 0.2 * LAMPORTS_PER_SOL) {
         throw new Error(
           `Deployer has insufficient SOL (${deployerBalance / LAMPORTS_PER_SOL}) to fund test bank. ` +
             `Send more devnet SOL to ${deployer.publicKey.toBase58()}`
@@ -150,7 +150,7 @@ async function getTestBank(): Promise<Keypair> {
 
     await sleep(500);
     const finalBalance = await connection.getBalance(bank.publicKey);
-    if (finalBalance < 0.5 * LAMPORTS_PER_SOL) {
+    if (finalBalance < 0.2 * LAMPORTS_PER_SOL) {
       throw new Error(
         `Test bank funding failed: ${finalBalance / LAMPORTS_PER_SOL} SOL < 4 SOL required`
       );
@@ -178,7 +178,7 @@ export async function setupUser(
 
     // Pre-spec guard: bank must have >= 0.5 SOL
     const bankBalance = await connection.getBalance(bank.publicKey);
-    if (bankBalance < 0.5 * LAMPORTS_PER_SOL) {
+    if (bankBalance < 0.2 * LAMPORTS_PER_SOL) {
       throw new Error(
         `Test bank depleted: ${bankBalance / LAMPORTS_PER_SOL} SOL < 0.5 SOL. ` +
           `Delete ${BANK_CACHE_PATH} and re-run to re-fund.`
@@ -188,7 +188,7 @@ export async function setupUser(
     const transferIx = SystemProgram.transfer({
       fromPubkey: bank.publicKey,
       toPubkey: wallet.publicKey,
-      lamports: 0.3 * LAMPORTS_PER_SOL,
+      lamports: 0.2 * LAMPORTS_PER_SOL,
     });
     await sendAndConfirmTransaction(connection, new Transaction().add(transferIx), [bank]);
     await sleep(500);

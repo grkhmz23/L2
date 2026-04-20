@@ -31,7 +31,7 @@ describe('02-agents', () => {
     const info = await sdk.agents.getAgent(agent1);
     expect(info).to.not.be.null;
     expect(info!.label).to.equal('Test Agent 1');
-    expect(info!.rootUser.toBase58()).to.equal(wallet.publicKey.toBase58());
+    expect(info!.rootUser.toBase58()).to.equal(sdk.pda.deriveUserState(wallet.publicKey)[0].toBase58());
   });
 
   it('can spawn a sub-agent', async () => {

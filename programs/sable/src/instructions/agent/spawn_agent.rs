@@ -15,6 +15,7 @@ pub struct SpawnAgent<'info> {
     pub payer: Signer<'info>,
 
     /// CHECK: Parent account (UserState or AgentState), validated in instruction
+    #[account(mut)]
     pub parent: AccountInfo<'info>,
 
     #[account(
