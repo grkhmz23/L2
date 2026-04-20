@@ -111,9 +111,9 @@ export function BalanceList() {
   return (
     <GlassPanel className="p-6 md:p-7">
       <SectionHeader
-        eyebrow="Vault Ledger"
-        title="Tracked Asset Balances"
-        subtitle="Per-user/per-mint ledger PDAs shown below. Internal transfers update these balances without moving SPL tokens."
+        eyebrow="Treasury"
+        title="Your Treasury"
+        subtitle="Per-mint balance PDAs under your UserState. Balances are private when delegated to PER."
         action={
           <LuxuryButton
             variant="secondary"
@@ -127,14 +127,14 @@ export function BalanceList() {
       />
 
       <div className="mt-6 grid gap-3 sm:grid-cols-3">
-        <SummaryChip label="Tracked Mints" value={String(balances.length)} />
+        <SummaryChip label="Assets" value={String(balances.length)} />
         <SummaryChip
           label="wSOL Ready"
           value={balances.some((b) => b.isWsol) ? 'Yes' : 'No'}
           tone={balances.some((b) => b.isWsol) ? 'green' : 'amber'}
         />
         <SummaryChip
-          label="Delegated Balances"
+          label="Private Balances"
           value={String(balances.filter((b) => b.isDelegated).length)}
           tone="amber"
         />
@@ -165,13 +165,13 @@ export function BalanceList() {
       <div className="mt-6">
         {balances.length === 0 ? (
           <div className="rounded-2xl border border-white/8 bg-black/30 p-5">
-            <p className="text-sm text-zinc-300">No ledger balances found yet.</p>
+            <p className="text-sm text-zinc-300">No treasury balances found yet.</p>
             <p className="mt-2 text-xs text-zinc-500">
-              Complete setup to create the default wSOL balance PDA, then add additional mints as needed.
+              Create your treasury to initialize the default wSOL balance PDA, then add additional mints as needed.
             </p>
           </div>
         ) : (
-          <div className="max-h-[420px] space-y-2 overflow-auto pr-1 l2-subtle-scrollbar">
+          <div className="max-h-[420px] space-y-2 overflow-auto pr-1 sable-subtle-scrollbar">
             {balances.map((balance) => (
               <div
                 key={balance.mint.toBase58()}

@@ -139,10 +139,10 @@ export function CompleteSetupModal({
               Create Treasury
             </p>
             <h3 className="mt-2 text-2xl text-white md:text-3xl">
-              Initialize Balance PDAs
+              Add Treasury Assets
             </h3>
             <p className="mt-3 text-sm text-zinc-400">
-              wSOL is always included. Add up to 9 extra mint addresses to create balance PDAs in the same setup flow. Your balances are private when delegated to PER.
+              wSOL is always included. Add up to 9 extra mint addresses to create balance PDAs in the same flow. When delegated to PER, your balances remain private — only you can read them.
             </p>
           </div>
           <LuxuryButton variant="ghost" className="px-3 py-2" onClick={onClose}>
@@ -163,7 +163,7 @@ export function CompleteSetupModal({
           <div className="rounded-2xl border border-white/8 bg-black/35 p-4">
             <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Current Selection</p>
             <p className="mt-3 text-white">
-              {1 + filteredMints.length} total balance PDA(s)
+              {1 + filteredMints.length} total asset PDA(s)
             </p>
             <p className="mt-1 text-xs text-zinc-500">
               1 default wSOL + {filteredMints.length} additional mints

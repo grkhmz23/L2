@@ -132,9 +132,9 @@ export function UserStatus() {
 
       <GlassPanel className="p-6 md:p-7">
         <SectionHeader
-          eyebrow="Protocol Identity"
-          title="Custody Session"
-          subtitle="UserState + wSOL readiness determine whether this wallet is fully initialized for protocol routing."
+          eyebrow="Identity"
+          title="Treasury Identity"
+          subtitle="UserState + wSOL readiness determine whether your treasury is initialized for agent operations."
           action={
             <LuxuryButton
               variant="secondary"
@@ -149,14 +149,14 @@ export function UserStatus() {
 
         <div className="mt-6 grid gap-4 md:grid-cols-3">
           <MetricCard
-            label="Join Status"
+            label="Treasury Status"
             value={
-              hasJoined === null ? 'Checking' : hasJoined ? 'Joined' : 'Not Joined'
+              hasJoined === null ? 'Checking' : hasJoined ? 'Created' : 'Not Created'
             }
             tone={hasJoined ? 'green' : 'amber'}
           />
           <MetricCard
-            label="wSOL Balance PDA"
+            label="Base Asset"
             value={
               hasWsolBalance === null
                 ? 'Checking'
@@ -212,7 +212,7 @@ export function UserStatus() {
               isLoading={isLoading}
               disabled={!sdk || hasJoined === true}
             >
-              {hasJoined ? 'Already Joined' : 'Join Only'}
+              {hasJoined ? 'Treasury Exists' : 'Create Treasury'}
             </LuxuryButton>
             <LuxuryButton
               fullWidth
@@ -220,7 +220,7 @@ export function UserStatus() {
               isLoading={isLoading}
               disabled={!sdk}
             >
-              Complete Setup with Mints
+              Add Assets
             </LuxuryButton>
           </div>
 
@@ -232,7 +232,7 @@ export function UserStatus() {
               isLoading={isLoading}
               disabled={!sdk}
             >
-              Quick Setup (wSOL only)
+              Add wSOL Asset
             </LuxuryButton>
           ) : null}
         </div>
@@ -306,15 +306,15 @@ function SetupOverlay({
 
         <div className="max-w-xl">
           <p className="text-[10px] uppercase tracking-[0.3em] text-amber-200/70">
-            {notJoined ? 'Protocol Initialization' : 'Setup Continuation'}
+            {notJoined ? 'Treasury Initialization' : 'Setup Continuation'}
           </p>
           <h2 className="mt-3 text-3xl text-white md:text-4xl">
-            {notJoined ? 'Private Wealth Routing' : 'Finish Custody Setup'}
+            {notJoined ? 'Create Your Treasury' : 'Finish Treasury Setup'}
           </h2>
           <p className="mt-4 text-sm leading-relaxed text-zinc-400">
             {notJoined
-              ? 'Create your UserState PDA and initialize your Sable wallet identity. wSOL is treated as the default base asset and can be created during complete setup.'
-              : 'Your wallet identity exists, but the default wSOL balance PDA is still missing. Complete setup to enable the standard vault + ledger workflow.'}
+              ? 'Initialize your Sable treasury with a UserState PDA and balance accounts. When delegated to PER, your balances remain private — only you can read them.'
+              : 'Your treasury identity exists, but the default wSOL balance PDA is still missing. Complete setup to enable agent funding and private transfers.'}
           </p>
         </div>
 
@@ -322,27 +322,27 @@ function SetupOverlay({
           <div className="rounded-2xl border border-white/8 bg-black/35 p-4">
             <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Base Asset</p>
             <p className="mt-2 font-mono text-amber-100">{WSOL_MINT.toBase58()}</p>
-            <p className="mt-2 text-xs text-zinc-500">wSOL is always included by default.</p>
+            <p className="mt-2 text-xs text-zinc-500">wSOL is included by default for gas and base operations.</p>
           </div>
           <div className="rounded-2xl border border-white/8 bg-black/35 p-4">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Setup Scope</p>
-            <p className="mt-2 text-white">1 UserState + up to 10 balance PDAs total</p>
-            <p className="mt-2 text-xs text-zinc-500">wSOL + up to 9 additional mint addresses.</p>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Privacy</p>
+            <p className="mt-2 text-white">Balances hidden when delegated to PER</p>
+            <p className="mt-2 text-xs text-zinc-500">Delegation moves state to MagicBlock ER with private read semantics.</p>
           </div>
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
           {notJoined ? (
             <LuxuryButton fullWidth variant="secondary" onClick={onJoin} isLoading={isLoading}>
-              Join Only
+              Create Identity
             </LuxuryButton>
           ) : (
             <LuxuryButton fullWidth variant="secondary" onClick={onQuickSetup} isLoading={isLoading}>
-              Quick Setup
+              Add wSOL
             </LuxuryButton>
           )}
           <LuxuryButton fullWidth onClick={onFullSetup} isLoading={isLoading}>
-            Complete Setup
+            Add Assets
           </LuxuryButton>
           <LuxuryButton fullWidth variant="ghost" onClick={onDismiss}>
             Continue Browsing

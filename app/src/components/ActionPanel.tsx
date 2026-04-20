@@ -16,19 +16,21 @@ import {
   TimelineItem,
   SectionHeader,
   cn,
+  truncateAddress,
 } from '@/components/ui/luxury';
 import toast from 'react-hot-toast';
 
-type ActionTab = 'deposit' | 'send' | 'withdraw' | 'delegate';
+type MainTab = 'treasury' | 'agents' | 'tasks' | 'activity';
+type TreasurySubTab = 'transfer' | 'deposit' | 'withdraw' | 'privacy';
 
 export function ActionPanel() {
-  const [activeTab, setActiveTab] = useState<ActionTab>('send');
+  const [activeTab, setActiveTab] = useState<MainTab>('treasury');
 
-  const tabs: Array<{ id: ActionTab; label: string }> = [
-    { id: 'send', label: 'Transfer' },
-    { id: 'deposit', label: 'Deposit' },
-    { id: 'withdraw', label: 'Withdraw' },
-    { id: 'delegate', label: 'Delegate' },
+  const tabs: Array<{ id: MainTab; label: string }> = [
+    { id: 'treasury', label: 'Treasury' },
+    { id: 'agents', label: 'Agents' },
+    { id: 'tasks', label: 'Tasks' },
+    { id: 'activity', label: 'Activity' },
   ];
 
   return (
@@ -60,14 +62,59 @@ export function ActionPanel() {
       </div>
 
       <div className="p-6 md:p-8">
-        {activeTab === 'deposit' && <DepositForm />}
-        {activeTab === 'send' && <SendForm />}
-        {activeTab === 'withdraw' && <WithdrawForm />}
-        {activeTab === 'delegate' && <DelegateForm />}
+        {activeTab === 'treasury' && <TreasuryConsole />}
+        {activeTab === 'agents' && <AgentsTab />}
+        {activeTab === 'tasks' && <TasksTab />}
+        {activeTab === 'activity' && <ActivityTab />}
       </div>
     </GlassPanel>
   );
 }
+
+/* ───────── Treasury Console (sub-tabs) ───────── */
+
+function TreasuryConsole() {
+  const [subTab, setSubTab] = useState<TreasurySubTab>('transfer');
+
+  const subs: Array<{ id: TreasurySubTab; label: string }> = [
+    { id: 'transfer', label: 'Transfer' },
+    { id: 'deposit', label: 'Deposit' },
+    { id: 'withdraw', label: 'Withdraw' },
+    { id: 'privacy', label: 'Privacy' },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap gap-2">
+        {subs.map((s) => {
+          const active = subTab === s.id;
+          return (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => setSubTab(s.id)}
+              className={cn(
+                'rounded-full px-4 py-2 text-[11px] uppercase tracking-[0.16em] transition',
+                active
+                  ? 'border border-white/12 bg-white/[0.08] text-amber-100'
+                  : 'text-zinc-500 hover:text-zinc-200'
+              )}
+            >
+              {s.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {subTab === 'transfer' && <SendForm />}
+      {subTab === 'deposit' && <DepositForm />}
+      {subTab === 'withdraw' && <WithdrawForm />}
+      {subTab === 'privacy' && <DelegateForm />}
+    </div>
+  );
+}
+
+/* ───────── DepositForm (unchanged logic) ───────── */
 
 function DepositForm() {
   const { sdk } = useWalletContext();
@@ -131,6 +178,8 @@ function DepositForm() {
     </div>
   );
 }
+
+/* ───────── SendForm (unchanged logic) ───────── */
 
 type SendStage =
   | 'idle'
@@ -328,9 +377,7 @@ function SendForm() {
         action={
           <div className="flex items-center gap-2">
             <Pill tone={routingMode === 'er' ? 'amber' : 'default'}>
-              {routingMode === 'er'
-                ? 'MagicBlock ER'
-                : 'Solana L1'}
+              {routingMode === 'er' ? 'MagicBlock ER' : 'Solana L1'}
             </Pill>
           </div>
         }
@@ -383,7 +430,7 @@ function SendForm() {
                 ? 'address1, address2, address3'
                 : 'address1,100000000\naddress2,250000000'
             }
-            className="l2-subtle-scrollbar"
+            className="sable-subtle-scrollbar"
           />
 
           <LuxuryInput
@@ -453,6 +500,8 @@ function SendForm() {
   );
 }
 
+/* ───────── WithdrawForm (unchanged logic) ───────── */
+
 function WithdrawForm() {
   const { sdk } = useWalletContext();
   const [mint, setMint] = useState('');
@@ -499,7 +548,7 @@ function WithdrawForm() {
           <Pill>Commit/Undelegate first</Pill>
         </div>
         <p className="mt-2 text-xs text-zinc-400">
-          If this instruction fails with a delegated-state error, use the Delegate tab to commit and undelegate the relevant mint account.
+          If this instruction fails with a delegated-state error, use the Privacy tab to commit and undelegate the relevant mint account.
         </p>
       </div>
 
@@ -537,6 +586,8 @@ function WithdrawForm() {
     </div>
   );
 }
+
+/* ───────── DelegateForm (unchanged logic, renamed in UI) ───────── */
 
 type DelegateStage = 'idle' | 'requesting' | 'waiting' | 'done';
 
@@ -730,6 +781,189 @@ function DelegateForm() {
       >
         {action === 'delegate' ? 'Authorize Delegation' : 'Authorize Commit / Undelegate'}
       </LuxuryButton>
+    </div>
+  );
+}
+
+/* ───────── Agents Tab ───────── */
+
+function AgentsTab() {
+  const { sdk } = useWalletContext();
+  const { publicKey } = useWallet();
+  const [agents, setAgents] = useState<Array<{ address: string; name: string; status: string }>>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!sdk || !publicKey) return;
+    setLoading(true);
+    sdk.agents
+      .listAgents(publicKey)
+      .then((list) => {
+        setAgents(
+          list.map((a) => ({
+            address: a.pubkey.toBase58(),
+            name: a.label || 'Unnamed Agent',
+            status: a.revoked ? 'Revoked' : a.frozen ? 'Frozen' : 'Active',
+          }))
+        );
+      })
+      .catch(() => setAgents([]))
+      .finally(() => setLoading(false));
+  }, [sdk, publicKey]);
+
+  return (
+    <div className="space-y-6">
+      <SectionHeader
+        eyebrow="Agent Overview"
+        title="Your Agents"
+        subtitle="Hierarchical agents spawned from your treasury. Each agent has its own balance, policy, and counters."
+      />
+
+      {loading ? (
+        <p className="text-sm text-zinc-400">Loading agents...</p>
+      ) : agents.length === 0 ? (
+        <div className="rounded-2xl border border-white/8 bg-black/30 p-5">
+          <p className="text-sm text-zinc-300">No agents found.</p>
+          <p className="mt-2 text-xs text-zinc-500">
+            Use the SDK or the treasury console to spawn agents. Once created, they appear here with
+            their policy and balance status.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {agents.map((agent) => (
+            <div
+              key={agent.address}
+              className="flex flex-col gap-2 rounded-xl border border-white/6 bg-white/[0.02] p-4 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-white">{agent.name}</p>
+                  <Pill tone={agent.status === 'Active' ? 'green' : agent.status === 'Frozen' ? 'amber' : 'red'}>
+                    {agent.status}
+                  </Pill>
+                </div>
+                <p className="mt-1 font-mono text-xs text-zinc-500">
+                  {truncateAddress(agent.address, 14, 14)}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ───────── Tasks Tab ───────── */
+
+function TasksTab() {
+  const { sdk } = useWalletContext();
+  const { publicKey } = useWallet();
+  const [tasks, setTasks] = useState<Array<{ address: string; title: string; state: string; budget: string }>>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!sdk || !publicKey) return;
+    setLoading(true);
+    sdk.auctions
+      .listTasks({ poster: publicKey })
+      .then((list) => {
+        setTasks(
+          list.map((t) => ({
+            address: t.pubkey.toBase58(),
+            title: `Task #${t.taskId.toString()}`,
+
+            state: t.state,
+            budget: t.budget?.toString() || '0',
+          }))
+        );
+      })
+      .catch(() => setTasks([]))
+      .finally(() => setLoading(false));
+  }, [sdk, publicKey]);
+
+  return (
+    <div className="space-y-6">
+      <SectionHeader
+        eyebrow="Auction Overview"
+        title="Your Tasks"
+        subtitle="Sealed-bid tasks posted by you or your agents. Tasks progress through Open → Revealing → Settled states."
+      />
+
+      {loading ? (
+        <p className="text-sm text-zinc-400">Loading tasks...</p>
+      ) : tasks.length === 0 ? (
+        <div className="rounded-2xl border border-white/8 bg-black/30 p-5">
+          <p className="text-sm text-zinc-300">No tasks found.</p>
+          <p className="mt-2 text-xs text-zinc-500">
+            Tasks are created via SDK or the treasury console. Once posted, they appear here with
+            bid and settlement status.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {tasks.map((task) => (
+            <div
+              key={task.address}
+              className="flex flex-col gap-2 rounded-xl border border-white/6 bg-white/[0.02] p-4 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-white">{task.title}</p>
+                  <Pill tone={task.state === 'open' ? 'green' : task.state === 'revealing' ? 'amber' : 'default'}>
+                    {task.state}
+                  </Pill>
+                </div>
+                <p className="mt-1 font-mono text-xs text-zinc-500">
+                  {truncateAddress(task.address, 14, 14)}
+                </p>
+              </div>
+              <div className="text-left sm:text-right">
+                <p className="text-sm text-zinc-300">{task.budget} lamports</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ───────── Activity Tab ───────── */
+
+function ActivityTab() {
+  const { publicKey } = useWallet();
+
+  return (
+    <div className="space-y-6">
+      <SectionHeader
+        eyebrow="History"
+        title="Activity"
+        subtitle="Recent transactions and events for your treasury."
+      />
+
+      <div className="rounded-2xl border border-white/8 bg-black/30 p-5">
+        {publicKey ? (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="h-2 w-2 rounded-full bg-zinc-600" />
+              <div>
+                <p className="text-sm text-zinc-300">Activity feed</p>
+                <p className="text-xs text-zinc-500">
+                  Connected: {truncateAddress(publicKey.toBase58(), 14, 14)}
+                </p>
+              </div>
+            </div>
+            <p className="text-xs text-zinc-500">
+              Transaction history will be available once the indexer integration is complete.
+              For now, check the Solana Explorer for on-chain activity.
+            </p>
+          </div>
+        ) : (
+          <p className="text-sm text-zinc-400">Connect your wallet to view activity.</p>
+        )}
+      </div>
     </div>
   );
 }

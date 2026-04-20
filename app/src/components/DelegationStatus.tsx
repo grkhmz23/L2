@@ -67,13 +67,13 @@ export function DelegationStatusComponent({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-[10px] uppercase tracking-[0.25em] text-zinc-500">
-            Delegation Status
+            Private Mode Status
           </p>
           <p className="mt-1 text-sm text-zinc-300">
             {delegatedCount} of {totalCount} tracked account(s) delegated
           </p>
           <p className="mt-1 text-xs text-zinc-500">
-            Includes `UserState` plus {mints.length} mint balance account(s)
+            Includes UserState plus {mints.length} asset balance account(s)
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -112,7 +112,7 @@ export function DelegationStatusComponent({
       ) : null}
 
       {status.length > 0 ? (
-        <div className="mt-4 max-h-56 space-y-2 overflow-auto pr-1 l2-subtle-scrollbar">
+        <div className="mt-4 max-h-56 space-y-2 overflow-auto pr-1 sable-subtle-scrollbar">
           {status.map((item, idx) => (
             <div
               key={item.account.toBase58()}
@@ -136,7 +136,7 @@ export function DelegationStatusComponent({
 
       <div className="mt-4 rounded-xl border border-white/6 bg-white/[0.02] p-3">
         <p className="text-xs text-zinc-400">
-          Delegation detection checks whether each account owner equals the MagicBlock delegation program. If delegation requests are event-based, status updates depend on the MagicBlock indexer/validator applying changes.
+          Private mode is active when accounts are delegated to the MagicBlock delegation program. In this state, balances are readable only by the owner via PER session keys.
         </p>
       </div>
     </div>
