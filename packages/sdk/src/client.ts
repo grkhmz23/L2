@@ -9,6 +9,7 @@ import { DelegationModule } from './delegation';
 import { AgentsModule } from './agents';
 import { AuctionsModule } from './auctions';
 import { SableSession, SessionExpiredError } from './session';
+import { SablePayments } from './payments';
 import { PROGRAM_ID_DEVNET } from '@sable/common';
 import type { SdkConfig, TransactionResult } from './types';
 
@@ -39,6 +40,9 @@ export class SableClient {
   // PER session
   session: SableSession | null = null;
 
+  // Private Payments API
+  payments: SablePayments;
+
   constructor(config: SdkConfig) {
     this.config = config;
     const programId = config.programId || PROGRAM_ID_DEVNET;
@@ -59,6 +63,38 @@ export class SableClient {
     this.delegation = new DelegationModule(this);
     this.agents = new AgentsModule(this);
     this.auctions = new AuctionsModule(this);
+
+    // Initialize payments adapter from env if available
+    const paymentsApiUrl =
+      typeof process !== 'undefined'
+        ? (process.env.SABLE_PRIVATE_PAYMENTS_API_URL || '')
+        : '';
+    const paymentsApiKey =
+      typeof process !== 'undefined'
+        ? (process.env.SABLE_PRIVATE_PAYMENTS_API_KEY || undefined)
+        : undefined;
+
+    if (paymentsApiUrl) {
+      this.payments = new SablePayments({ apiUrl: paymentsApiUrl, apiKey: paymentsApiKey });
+    } else {
+      // Create a no-op instance that throws on first use so callers get a clear error
+      this.payments = new Proxy({} as SablePayments, {
+        get(_target, prop) {
+          if (prop === 'aml') {
+            return new Proxy({} as any, {
+              get() {
+                throw new Error(
+                  'SablePayments is not configured. Set SABLE_PRIVATE_PAYMENTS_API_URL environment variable.'
+                );
+              },
+            });
+          }
+          throw new Error(
+            'SablePayments is not configured. Set SABLE_PRIVATE_PAYMENTS_API_URL environment variable.'
+          );
+        },
+      });
+    }
   }
 
   /**
