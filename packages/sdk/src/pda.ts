@@ -1,5 +1,6 @@
 import { PublicKey } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { BN } from '@coral-xyz/anchor';
 
 // Seeds
 const CONFIG_SEED = Buffer.from('config');
@@ -9,6 +10,9 @@ const AGENT_COUNTERS_SEED = Buffer.from('agent_counters');
 const AGENT_BALANCE_SEED = Buffer.from('agent_balance');
 const USER_BALANCE_SEED = Buffer.from('user_balance');
 const VAULT_AUTHORITY_SEED = Buffer.from('vault_authority');
+const TASK_SEED = Buffer.from('task');
+const TASK_ESCROW_SEED = Buffer.from('task_escrow');
+const BID_SEED = Buffer.from('bid');
 const PERMISSION_SEED = Buffer.from('permission:');
 
 // MagicBlock PER permission program
@@ -133,6 +137,38 @@ export class PdaHelper {
       ],
       ASSOCIATED_TOKEN_PROGRAM_ID
     )[0];
+  }
+
+  /**
+   * Derive Task PDA for a given poster and task_id
+   */
+  deriveTask(poster: PublicKey, taskId: number | BN): [PublicKey, number] {
+    const taskIdBn = taskId instanceof BN ? taskId : new BN(taskId);
+    const taskIdBytes = taskIdBn.toArray('le', 8);
+    return PublicKey.findProgramAddressSync(
+      [TASK_SEED, poster.toBuffer(), Buffer.from(taskIdBytes)],
+      this.programId
+    );
+  }
+
+  /**
+   * Derive TaskEscrow PDA for a given task
+   */
+  deriveTaskEscrow(task: PublicKey): [PublicKey, number] {
+    return PublicKey.findProgramAddressSync(
+      [TASK_ESCROW_SEED, task.toBuffer()],
+      this.programId
+    );
+  }
+
+  /**
+   * Derive Bid PDA for a given task and bidder
+   */
+  deriveBid(task: PublicKey, bidder: PublicKey): [PublicKey, number] {
+    return PublicKey.findProgramAddressSync(
+      [BID_SEED, task.toBuffer(), bidder.toBuffer()],
+      this.programId
+    );
   }
 
   /**

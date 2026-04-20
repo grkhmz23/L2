@@ -6,6 +6,7 @@ import { TreasuryModule } from './treasury';
 import { TransferModule } from './transfer';
 import { DelegationModule } from './delegation';
 import { AgentsModule } from './agents';
+import { AuctionsModule } from './auctions';
 import { PROGRAM_ID_DEVNET } from '@sable/common';
 import type { SdkConfig, TransactionResult } from './types';
 
@@ -31,6 +32,7 @@ export class SableClient {
   transfer: import('./transfer').TransferModule;
   delegation: import('./delegation').DelegationModule;
   agents: import('./agents').AgentsModule;
+  auctions: import('./auctions').AuctionsModule;
 
   constructor(config: SdkConfig) {
     this.config = config;
@@ -51,6 +53,7 @@ export class SableClient {
     this.transfer = new TransferModule(this);
     this.delegation = new DelegationModule(this);
     this.agents = new AgentsModule(this);
+    this.auctions = new AuctionsModule(this);
   }
 
   /**
