@@ -1012,6 +1012,7 @@ DONE CHECKLIST
 
 <a id="prompt-13"></a>
 ## Prompt 13 — SDK: agent methods
+> **COMPLETED** — commit `e3135b7`
 
 ```
 GOAL
@@ -1061,10 +1062,10 @@ DO NOT
 - Silently retry policy failures — surface the error.
 
 DONE CHECKLIST
-- [ ] All methods work against local validator
-- [ ] Type definitions exported from @sable/sdk
-- [ ] PROGRESS.md updated
-- [ ] Commit: "sable: prompt 13 — SDK agents"
+- [x] All methods work against local validator
+- [x] Type definitions exported from @sable/sdk
+- [x] PROGRESS.md updated
+- [x] Commit: "sable: prompt 13 — SDK agents"
 ```
 
 ---

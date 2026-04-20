@@ -14,7 +14,7 @@
 | 10 | reveal_bid + settle_auction | ✅ | ada571a | reveal_bid + settle_auction instructions. Deterministic tie-breaking. Escrow conservation with debug_assert!. Winner/non-winner/poster payouts. Tests for winner selection, payout math, constraints. |
 | 11 | PER permission metadata accounts | ✅ | | cargo build-sbf + cargo test pass. pnpm -r build + typecheck pass. |
 | 12 | SDK rename, IDL regen, module restructure | ✅ | | Generated IDL via cargo test --features idl-build. SDK split into treasury/transfer/delegation modules. SableClient exposes module accessors + backward-compat methods. App imports unchanged. Tests structured. |
-| 13 | SDK: agent methods | ☐ | | |
+| 13 | SDK: agent methods | ✅ | e3135b7 | AgentsModule with spawnAgent, closeAgent, fundAgent, defundAgent, setPolicy, freezeAgent, unfreezeAgent, revokeAgent, agentTransfer, agentTransferBatch, listAgents, getAgent. Auto-derives PDAs, ancestor chains, PER permissions. SpendPolicy TS mirror. pnpm -r build + typecheck pass. cargo test --package sable passes.
 | 14 | SDK: auction methods | ☐ | | |
 | 15 | SDK: PER session key flow | ☐ | | |
 | 16 | SDK: Private Payments API adapter | ☐ | | |
