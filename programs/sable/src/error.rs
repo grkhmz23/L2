@@ -133,4 +133,7 @@ pub enum SableError {
 
     #[msg("Deposit is below the task minimum")]
     DepositBelowMinimum,
+
+    #[msg("Bid reveal hash does not match commitment")]
+    InvalidReveal,
 }

@@ -87,6 +87,7 @@ const IDL = {
     { code: 6041, name: 'TaskEscrowMismatch', msg: 'Task escrow does not match task' },
     { code: 6042, name: 'TaskWrongState', msg: 'Task is in wrong state for this operation' },
     { code: 6043, name: 'DepositBelowMinimum', msg: 'Deposit is below the task minimum' },
+    { code: 6044, name: 'InvalidReveal', msg: 'Bid reveal hash does not match commitment' },
   ],
 };
 

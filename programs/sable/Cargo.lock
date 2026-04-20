@@ -1646,6 +1646,7 @@ dependencies = [
  "solana-address",
  "solana-hash 4.0.1",
  "solana-instruction-error",
+ "solana-program",
  "solana-pubkey 4.0.0",
  "toml_datetime 1.0.1+spec-1.1.0",
  "toml_parser",

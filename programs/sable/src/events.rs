@@ -147,3 +147,19 @@ pub struct BidCommitted {
     pub bidder: Pubkey,
     pub deposit: u64,
 }
+
+#[event]
+pub struct BidRevealed {
+    pub task: Pubkey,
+    pub bidder: Pubkey,
+    pub amount: u64,
+}
+
+#[event]
+pub struct AuctionSettled {
+    pub task: Pubkey,
+    pub winner: Pubkey,
+    pub amount: u64,
+    pub participants: u32,
+    pub forfeit_count: u32,
+}

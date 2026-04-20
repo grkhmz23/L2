@@ -666,6 +666,16 @@ pub mod sable {
         instructions::auction::commit_bid(ctx, bidder_kind, commit_hash, deposit)
     }
 
+    /// Reveal a sealed bid during the reveal window.
+    pub fn reveal_bid(ctx: Context<RevealBid>, amount: u64, nonce: u64) -> Result<()> {
+        instructions::auction::reveal_bid(ctx, amount, nonce)
+    }
+
+    /// Settle the auction after the reveal deadline.
+    pub fn settle_auction(ctx: Context<SettleAuction>) -> Result<()> {
+        instructions::auction::settle_auction(ctx)
+    }
+
     /// Delegate UserState and UserBalance PDAs to the Ephemeral Rollup.
     ///
     /// Remaining accounts (per mint in mint_list, in order):
