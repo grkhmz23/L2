@@ -8,10 +8,6 @@ pub struct RevokeAgent<'info> {
     #[account(mut)]
     pub agent: Account<'info, AgentState>,
 
-    #[account(
-        seeds = [crate::USER_STATE_SEED.as_bytes(), agent.root_user.as_ref()],
-        bump = root_user.bump,
-    )]
     pub root_user: Account<'info, UserState>,
 
     pub root_owner: Signer<'info>,

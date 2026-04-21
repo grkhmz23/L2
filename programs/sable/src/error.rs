@@ -148,4 +148,7 @@ pub enum SableError {
 
     #[msg("Invalid delegation metadata PDA")]
     InvalidMetadataPda,
+
+    #[msg("Invalid account data")]
+    InvalidAccountData,
 }

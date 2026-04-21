@@ -44,13 +44,25 @@ pub fn settle_auction(ctx: Context<SettleAuction>) -> Result<()> {
     require!(task.state == TaskState::Open, SableError::TaskWrongState);
     require!(now > task.bid_reveal_deadline, SableError::TaskDeadlineInvalid);
 
-    // Validate poster balance PDA
-    let poster_balance_key = ctx.accounts.poster_balance.key();
+    // Validate poster balance PDA by reading owner/agent from account data
+    let poster_balance_data = ctx.accounts.poster_balance.try_borrow_data()?;
+    let balance_owner = Pubkey::new_from_array(
+        poster_balance_data[8..40]
+            .try_into()
+            .map_err(|_| SableError::InvalidRecipientAccounts)?,
+    );
+    let balance_mint = Pubkey::new_from_array(
+        poster_balance_data[40..72]
+            .try_into()
+            .map_err(|_| SableError::InvalidRecipientAccounts)?,
+    );
+    require!(balance_mint == task.mint, SableError::InvalidMint);
+
     let expected_poster_balance = if task.poster_kind == crate::state::PosterKind::User {
         Pubkey::find_program_address(
             &[
                 crate::USER_BALANCE_SEED.as_bytes(),
-                task.poster.as_ref(),
+                balance_owner.as_ref(),
                 task.mint.as_ref(),
             ],
             ctx.program_id,
@@ -60,7 +72,7 @@ pub fn settle_auction(ctx: Context<SettleAuction>) -> Result<()> {
         Pubkey::find_program_address(
             &[
                 crate::AGENT_BALANCE_SEED.as_bytes(),
-                task.poster.as_ref(),
+                balance_owner.as_ref(),
                 task.mint.as_ref(),
             ],
             ctx.program_id,
@@ -68,9 +80,10 @@ pub fn settle_auction(ctx: Context<SettleAuction>) -> Result<()> {
         .0
     };
     require!(
-        poster_balance_key == expected_poster_balance,
+        ctx.accounts.poster_balance.key() == expected_poster_balance,
         SableError::InvalidRecipientAccounts
     );
+    drop(poster_balance_data);
 
     let remaining = ctx.remaining_accounts;
     let bid_count = task.bid_count as usize;
@@ -88,12 +101,16 @@ pub fn settle_auction(ctx: Context<SettleAuction>) -> Result<()> {
         let bid_acc_info = &remaining[i * 2];
         let balance_acc_info = &remaining[i * 2 + 1];
 
+        let bid = Bid::try_deserialize(&mut &bid_acc_info.try_borrow_data()?[..])
+            .map_err(|_| error!(SableError::InvalidRecipientAccounts))?;
+        require!(bid.task == task.key(), SableError::InvalidRecipientAccounts);
+
         // Validate Bid PDA
         let (expected_bid, _) = Pubkey::find_program_address(
             &[
                 crate::instructions::auction::commit_bid::BID_SEED.as_bytes(),
                 task.key().as_ref(),
-                bid_acc_info.key().as_ref(),
+                bid.bidder.as_ref(),
             ],
             ctx.program_id,
         );
@@ -102,16 +119,12 @@ pub fn settle_auction(ctx: Context<SettleAuction>) -> Result<()> {
             SableError::InvalidRecipientAccounts
         );
 
-        let bid = Bid::try_deserialize(&mut &bid_acc_info.try_borrow_data()?[..])
-            .map_err(|_| error!(SableError::InvalidRecipientAccounts))?;
-        require!(bid.task == task.key(), SableError::InvalidRecipientAccounts);
-
         // Validate bidder balance PDA
         let expected_balance = if bid.bidder_kind == BidderKind::User {
             Pubkey::find_program_address(
                 &[
                     crate::USER_BALANCE_SEED.as_bytes(),
-                    bid.bidder.as_ref(),
+                    bid.bidder_owner.as_ref(),
                     task.mint.as_ref(),
                 ],
                 ctx.program_id,
@@ -220,7 +233,11 @@ pub fn settle_auction(ctx: Context<SettleAuction>) -> Result<()> {
             residual,
         )?;
 
-        task.winning_bidder = winner.0.bidder;
+        task.winning_bidder = if winner.0.bidder_kind == BidderKind::User {
+            winner.0.bidder_owner
+        } else {
+            winner.0.bidder
+        };
         task.winning_bid = winning_amount;
     } else {
         // Zero revealed bids: refund full escrow to poster

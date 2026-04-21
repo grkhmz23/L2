@@ -85,7 +85,7 @@ pub fn close_agent(ctx: Context<CloseAgent>) -> Result<()> {
 
     // Decrement parent's count by trying to deserialize as each type
     {
-        let mut parent_data = ctx.accounts.parent.try_borrow_mut_data()?;
+        let parent_data = ctx.accounts.parent.try_borrow_data()?;
 
         // Try UserState first
         if let Ok(mut parent_state) = UserState::try_deserialize(&mut &parent_data[..]) {
@@ -93,13 +93,15 @@ pub fn close_agent(ctx: Context<CloseAgent>) -> Result<()> {
                 .agent_count
                 .checked_sub(1)
                 .ok_or(SableError::Underflow)?;
-            parent_state.serialize(&mut &mut parent_data[..])?;
+            drop(parent_data);
+            crate::state::write_account_state(&ctx.accounts.parent, &parent_state)?;
         } else if let Ok(mut parent_state) = AgentState::try_deserialize(&mut &parent_data[..]) {
             parent_state.child_count = parent_state
                 .child_count
                 .checked_sub(1)
                 .ok_or(SableError::Underflow)?;
-            parent_state.serialize(&mut &mut parent_data[..])?;
+            drop(parent_data);
+            crate::state::write_account_state(&ctx.accounts.parent, &parent_state)?;
         } else {
             return Err(error!(SableError::InvalidRecipientAccounts));
         }

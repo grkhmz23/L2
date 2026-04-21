@@ -1592,6 +1592,10 @@
             "type": "pubkey"
           },
           {
+            "name": "bidder_owner",
+            "type": "pubkey"
+          },
+          {
             "name": "bidder_kind",
             "type": {
               "defined": {

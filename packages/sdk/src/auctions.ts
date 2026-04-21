@@ -1,4 +1,4 @@
-import { PublicKey, SystemProgram } from '@solana/web3.js';
+import { Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
 import { BN } from '@coral-xyz/anchor';
 import type { SableClient } from './client';
 import { PERMISSION_PROGRAM_ID } from './pda';
@@ -154,7 +154,7 @@ export class AuctionsModule {
 
       const data = (await this.client.program.account.agentState.fetch(currentPk)) as any;
 
-      if (data.parent_kind?.user !== undefined) {
+      if (data.parentKind?.user !== undefined) {
         break;
       }
 
@@ -204,11 +204,13 @@ export class AuctionsModule {
 
     let taskId: number;
     if (posterKind === 'user') {
+      console.log('createTask posterPda:', posterPda.toBase58());
       const userState = await this.client.program.account.userState.fetch(posterPda);
-      taskId = userState.task_count;
+      console.log('createTask userState fetched:', userState);
+      taskId = userState.taskCount;
     } else {
       const agentState = await this.client.program.account.agentState.fetch(posterPda);
-      taskId = agentState.task_count;
+      taskId = agentState.taskCount;
     }
 
     const [task] = this.client.pda.deriveTask(posterPda, taskId);
@@ -240,7 +242,7 @@ export class AuctionsModule {
 
     // Build ancestor chain for agent poster
     let remainingAccounts: { pubkey: PublicKey; isWritable: boolean; isSigner: boolean }[] = [];
-    let agentCounters: PublicKey = PublicKey.default;
+    let agentCounters: PublicKey = Keypair.generate().publicKey; // dummy for user posters (unused by program)
     if (posterKind === 'agent') {
       const ancestors = await this.buildAncestorChainForAuth(posterPda);
       remainingAccounts = asRemainingAccounts(ancestors);
@@ -293,7 +295,7 @@ export class AuctionsModule {
     const [taskEscrow] = this.client.pda.deriveTaskEscrow(task);
 
     let posterBalance: PublicKey;
-    if (taskData.poster_kind?.user !== undefined) {
+    if (taskData.posterKind?.user !== undefined) {
       const [userState] = this.client.pda.deriveUserState(signer);
       [posterBalance] = this.client.pda.deriveUserBalance(signer, taskData.mint as PublicKey);
     } else {
@@ -344,7 +346,14 @@ export class AuctionsModule {
     if (!this.client.isConnected) throw new Error('Wallet not connected');
 
     const bidderOwner = this.client.walletPublicKey!;
-    const [bid] = this.client.pda.deriveBid(task, bidder);
+
+    // Resolve bidder PDA: user bidder passes owner pubkey, we need UserState PDA
+    const bidderPda =
+      bidderKind === 'user'
+        ? this.client.pda.deriveUserState(bidder)[0]
+        : bidder;
+
+    const [bid] = this.client.pda.deriveBid(task, bidderPda);
 
     const taskData = (await this.client.program.account.task.fetch(task)) as any;
     const mint = taskData.mint as PublicKey;
@@ -361,12 +370,13 @@ export class AuctionsModule {
     // Generate or use provided nonce
     const nonce = providedNonce ?? generateNonce();
 
-    // Compute commit hash
-    const commitHash = computeCommitHash(amount, nonce, bidder);
+    // Compute commit hash using bidderPda (UserState/AgentState PDA) —
+    // the program stores bid.bidder = bidderPda and reveal verifies against it.
+    const commitHash = computeCommitHash(amount, nonce, bidderPda);
 
     // Build ancestor chain for agent bidder
     let remainingAccounts: { pubkey: PublicKey; isWritable: boolean; isSigner: boolean }[] = [];
-    let agentCounters: PublicKey = PublicKey.default;
+    let agentCounters: PublicKey = Keypair.generate().publicKey; // dummy for user bidders (unused by program)
     if (bidderKind === 'agent') {
       const ancestors = await this.buildAncestorChainForAuth(bidder);
       remainingAccounts = asRemainingAccounts(ancestors);
@@ -377,7 +387,7 @@ export class AuctionsModule {
       .commitBid(toBidderKindEnum(bidderKind), Array.from(commitHash), deposit)
       .accounts({
         bidderOwner,
-        bidder,
+        bidder: bidderPda,
         bidderBalance,
         task,
         taskEscrow,
@@ -389,6 +399,13 @@ export class AuctionsModule {
       .remainingAccounts(remainingAccounts)
       .transaction();
 
+    console.log('commitBid bidder:', bidder.toBase58(), 'bidderPda:', bidderPda.toBase58());
+    console.log('commitBid tx instructions:', tx.instructions.length);
+    tx.instructions.forEach((ix: any, i: number) => {
+      console.log('Instruction', i, 'program:', ix.programId.toBase58());
+      ix.keys.forEach((k: any, j: number) => console.log('  key', j, k.pubkey.toBase58(), 'writable:', k.isWritable, 'signer:', k.isSigner));
+    });
+
     const result = await this.client.sendTransaction(tx);
     return { tx: result, nonce, commitHash };
   }
@@ -399,24 +416,30 @@ export class AuctionsModule {
   async revealBid({
     task,
     bidder,
+    bidderKind = 'user',
     amount,
     nonce,
   }: {
     task: PublicKey;
     bidder: PublicKey;
+    bidderKind?: BidderKind;
     amount: BN;
     nonce: BN;
   }): Promise<{ tx: TransactionResult }> {
     if (!this.client.isConnected) throw new Error('Wallet not connected');
 
     const bidderOwner = this.client.walletPublicKey!;
-    const [bid] = this.client.pda.deriveBid(task, bidder);
+    const bidderPda =
+      bidderKind === 'user'
+        ? this.client.pda.deriveUserState(bidder)[0]
+        : bidder;
+    const [bid] = this.client.pda.deriveBid(task, bidderPda);
 
     const tx = await this.client.program.methods
       .revealBid(amount, nonce)
       .accounts({
         bidderOwner,
-        bidder,
+        bidder: bidderPda,
         bid,
         task,
       })
@@ -449,7 +472,7 @@ export class AuctionsModule {
 
     // Derive poster balance for refund
     let posterBalance: PublicKey;
-    if (taskData.poster_kind?.user !== undefined) {
+    if (taskData.posterKind?.user !== undefined) {
       // User poster
       const poster = taskData.poster as PublicKey;
       const posterAccount = await this.client.config.connection.getAccountInfo(poster);
@@ -468,6 +491,31 @@ export class AuctionsModule {
       );
     }
 
+    // Fetch all bids and build remaining accounts
+    const bids = await this.getTaskBids(task);
+    const remainingAccounts: { pubkey: PublicKey; isWritable: boolean; isSigner: boolean }[] = [];
+    for (const bid of bids) {
+      const bidderPda = bid.bidder;
+      const [bidPda] = this.client.pda.deriveBid(task, bidderPda);
+      let balancePda: PublicKey;
+      if (bid.bidderKind === 'user') {
+        // For user bidders, read owner from UserState (bidderPda is the UserState PDA)
+        const bidderAccount = await this.client.config.connection.getAccountInfo(bidderPda);
+        if (!bidderAccount) {
+          throw new Error('Bidder account not found');
+        }
+        const ownerBytes = bidderAccount.data.slice(8, 40); // after discriminator
+        const owner = new PublicKey(ownerBytes);
+        [balancePda] = this.client.pda.deriveUserBalance(owner, taskData.mint as PublicKey);
+      } else {
+        [balancePda] = this.client.pda.deriveAgentBalance(bidderPda, taskData.mint as PublicKey);
+      }
+      remainingAccounts.push(
+        { pubkey: bidPda, isWritable: true, isSigner: false },
+        { pubkey: balancePda, isWritable: true, isSigner: false }
+      );
+    }
+
     const tx = await this.client.program.methods
       .settleAuction()
       .accounts({
@@ -476,6 +524,7 @@ export class AuctionsModule {
         taskEscrow,
         posterBalance,
       })
+      .remainingAccounts(remainingAccounts)
       .transaction();
 
     const result = await this.client.sendTransaction(tx);
@@ -484,8 +533,8 @@ export class AuctionsModule {
     const updatedTask = (await this.client.program.account.task.fetch(task)) as any;
     return {
       tx: result,
-      winner: updatedTask.winning_bidder as PublicKey,
-      winningAmount: updatedTask.winning_bid as BN,
+      winner: updatedTask.winningBidder as PublicKey,
+      winningAmount: updatedTask.winningBid as BN,
     };
   }
 

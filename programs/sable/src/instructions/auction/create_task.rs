@@ -106,29 +106,33 @@ pub fn create_task(
     let mint_key = ctx.accounts.mint.key();
 
     // Validate poster, debit balance, and compute next task_id
-    let mut poster_data = ctx.accounts.poster.try_borrow_mut_data()?;
-
     let next_task_id = if poster_kind == PosterKind::User {
         // --- Human poster ---
-        let mut poster_state = UserState::try_deserialize(&mut &poster_data[..])
-            .map_err(|_| error!(SableError::InvalidRecipientAccounts))?;
+        let mut poster_state = {
+            let poster_data = ctx.accounts.poster.try_borrow_data()?;
+            UserState::try_deserialize(&mut &poster_data[..])
+                .map_err(|_| error!(SableError::InvalidRecipientAccounts))?
+        };
 
         require!(poster_state.owner == signer, SableError::NotAuthorized);
         require!(task_id == poster_state.task_count, SableError::InvalidAmount);
 
         // Validate and debit UserBalance
-        debit_user_balance(&ctx.accounts.poster_balance, poster_key, mint_key, budget)?;
+        debit_user_balance(&ctx.accounts.poster_balance, poster_state.owner, mint_key, budget)?;
 
         poster_state.task_count = poster_state
             .task_count
             .checked_add(1)
             .ok_or(SableError::Overflow)?;
-        poster_state.serialize(&mut &mut poster_data[..])?;
+        crate::state::write_account_state(&ctx.accounts.poster, &poster_state)?;
         poster_state.task_count
     } else {
         // --- Agent poster ---
-        let mut poster_state = AgentState::try_deserialize(&mut &poster_data[..])
-            .map_err(|_| error!(SableError::InvalidRecipientAccounts))?;
+        let mut poster_state = {
+            let poster_data = ctx.accounts.poster.try_borrow_data()?;
+            AgentState::try_deserialize(&mut &poster_data[..])
+                .map_err(|_| error!(SableError::InvalidRecipientAccounts))?
+        };
 
         require!(poster_state.owner == signer, SableError::AgentNotAuthorized);
         require!(
@@ -160,9 +164,11 @@ pub fn create_task(
             SableError::InvalidRecipientAccounts
         );
 
-        let mut counters_data = ctx.accounts.agent_counters.try_borrow_mut_data()?;
-        let mut counters = AgentCounters::try_deserialize(&mut &counters_data[..])
-            .map_err(|_| error!(SableError::InvalidRecipientAccounts))?;
+        let mut counters = {
+            let counters_data = ctx.accounts.agent_counters.try_borrow_data()?;
+            AgentCounters::try_deserialize(&mut &counters_data[..])
+                .map_err(|_| error!(SableError::InvalidRecipientAccounts))?
+        };
 
         // Policy check: budget is treated as an outbound transfer
         let updated_counters = validate_spend(
@@ -186,17 +192,15 @@ pub fn create_task(
         counters.spent_total = updated_counters.spent_total;
         counters.spent_today = updated_counters.spent_today;
         counters.current_day = updated_counters.current_day;
-        counters.serialize(&mut &mut counters_data[..])?;
-        drop(counters_data);
+        crate::state::write_account_state(&ctx.accounts.agent_counters, &counters)?;
 
         poster_state.task_count = poster_state
             .task_count
             .checked_add(1)
             .ok_or(SableError::Overflow)?;
-        poster_state.serialize(&mut &mut poster_data[..])?;
+        crate::state::write_account_state(&ctx.accounts.poster, &poster_state)?;
         poster_state.task_count
     };
-    drop(poster_data);
 
     // Initialize TaskEscrow
     let task_escrow = &mut ctx.accounts.task_escrow;

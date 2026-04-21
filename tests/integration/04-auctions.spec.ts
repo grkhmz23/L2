@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { BN } from '@coral-xyz/anchor';
 import { PublicKey } from '@solana/web3.js';
-import { setupUser, sleep } from './helpers/setup';
+import { setupUser, sleep, getValidatorTime } from './helpers/setup';
 import { checkConservation } from './helpers/conservation';
 
 describe('04-auctions', () => {
@@ -9,10 +9,22 @@ describe('04-auctions', () => {
   let wallet: Awaited<ReturnType<typeof setupUser>>['wallet'];
   let mint: Awaited<ReturnType<typeof setupUser>>['mint'];
   let task: PublicKey;
-  const bidders: { pubkey: PublicKey; nonce: BN }[] = [];
+  let bidders: {
+    sdk: Awaited<ReturnType<typeof setupUser>>['sdk'];
+    wallet: Awaited<ReturnType<typeof setupUser>>['wallet'];
+    amount: number;
+    nonce: BN;
+  }[] = [];
 
   before(async () => {
     ({ sdk, wallet, mint } = await setupUser());
+    console.log('04-auctions wallet:', wallet.publicKey.toBase58());
+
+    // Create 3 separate bidders (each needs their own UserState + balance)
+    for (const amount of [80_000, 70_000, 90_000]) {
+      const { sdk: bidderSdk, wallet: bidderWallet } = await setupUser();
+      bidders.push({ sdk: bidderSdk, wallet: bidderWallet, amount, nonce: new BN(0) });
+    }
   });
 
   afterEach(async () => {
@@ -40,16 +52,23 @@ describe('04-auctions', () => {
   });
 
   it('can commit bids', async () => {
-    const bidAmounts = [80_000, 70_000, 90_000];
-    for (let i = 0; i < 3; i++) {
-      const result = await sdk.auctions.commitBid({
+    for (let i = 0; i < bidders.length; i++) {
+      const bidder = bidders[i];
+      console.log(
+        'commitBid bidder',
+        i,
+        bidder.wallet.publicKey.toBase58(),
+        'amount',
+        bidder.amount
+      );
+      const result = await bidder.sdk.auctions.commitBid({
         task,
-        bidder: wallet.publicKey,
+        bidder: bidder.wallet.publicKey,
         bidderKind: 'user',
-        amount: new BN(bidAmounts[i]),
+        amount: new BN(bidder.amount),
         deposit: new BN(1_000),
       });
-      bidders.push({ pubkey: wallet.publicKey, nonce: result.nonce });
+      bidder.nonce = result.nonce;
       await sleep(200);
     }
 
@@ -59,19 +78,20 @@ describe('04-auctions', () => {
 
   it('can reveal bids after commit deadline', async () => {
     const info = await sdk.auctions.getTask(task);
-    const now = Math.floor(Date.now() / 1000);
+    const now = await getValidatorTime();
     const waitUntil = info!.bidCommitDeadline.toNumber() + 1;
     if (now < waitUntil) {
       await sleep((waitUntil - now) * 1000 + 500);
     }
 
-    const bidAmounts = [80_000, 70_000, 90_000];
-    for (let i = 0; i < 3; i++) {
-      await sdk.auctions.revealBid({
+    for (let i = 0; i < bidders.length; i++) {
+      const bidder = bidders[i];
+      await bidder.sdk.auctions.revealBid({
         task,
-        bidder: wallet.publicKey,
-        amount: new BN(bidAmounts[i]),
-        nonce: bidders[i].nonce,
+        bidder: bidder.wallet.publicKey,
+        bidderKind: 'user',
+        amount: new BN(bidder.amount),
+        nonce: bidder.nonce,
       });
       await sleep(200);
     }
@@ -79,7 +99,7 @@ describe('04-auctions', () => {
 
   it('can settle auction after reveal deadline', async () => {
     const info = await sdk.auctions.getTask(task);
-    const now = Math.floor(Date.now() / 1000);
+    const now = await getValidatorTime();
     const waitUntil = info!.bidRevealDeadline.toNumber() + 1;
     if (now < waitUntil) {
       await sleep((waitUntil - now) * 1000 + 500);
@@ -88,7 +108,9 @@ describe('04-auctions', () => {
     const result = await sdk.auctions.settleAuction({ task });
     await sleep(500);
 
-    expect(result.winner.toBase58()).to.equal(wallet.publicKey.toBase58());
+    // Lowest bid (70_000) wins
+    const winner = bidders.find((b) => b.amount === 70_000)!;
+    expect(result.winner.toBase58()).to.equal(winner.wallet.publicKey.toBase58());
     expect(result.winningAmount.toNumber()).to.equal(70_000);
 
     const updated = await sdk.auctions.getTask(task);

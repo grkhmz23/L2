@@ -169,6 +169,7 @@ pub struct Bid {
     pub bump: u8,
     pub task: Pubkey,
     pub bidder: Pubkey,
+    pub bidder_owner: Pubkey,
     pub bidder_kind: BidderKind,
     pub commit_hash: [u8; 32],
     pub deposit: u64,
@@ -178,7 +179,7 @@ pub struct Bid {
 }
 
 impl Bid {
-    pub const SIZE: usize = 1 + 1 + 32 + 32 + 1 + 32 + 8 + 8 + 1 + 8;
+    pub const SIZE: usize = 1 + 1 + 32 + 32 + 32 + 1 + 32 + 8 + 8 + 1 + 8;
 }
 
 /// Task PDA - auction listing
@@ -224,4 +225,16 @@ pub struct TransferItem {
     pub to_owner: Pubkey,
     pub amount: u64,
     pub kind: RecipientKind,
+}
+
+/// Serialize account state into an AccountInfo, preserving the 8-byte Anchor discriminator.
+/// Use this when writing back to an AccountInfo that was deserialized with try_deserialize.
+pub fn write_account_state<T: AnchorSerialize>(
+    account_info: &AccountInfo,
+    state: &T,
+) -> Result<()> {
+    let mut data = account_info.try_borrow_mut_data()?;
+    let mut slice = &mut data[8..];
+    state.serialize(&mut slice)
+        .map_err(|_| error!(crate::error::SableError::InvalidAccountData))
 }

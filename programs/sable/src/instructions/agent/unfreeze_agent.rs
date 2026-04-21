@@ -8,10 +8,6 @@ pub struct UnfreezeAgent<'info> {
     #[account(mut)]
     pub agent: Account<'info, AgentState>,
 
-    #[account(
-        seeds = [crate::USER_STATE_SEED.as_bytes(), agent.root_user.as_ref()],
-        bump = root_user.bump,
-    )]
     pub root_user: Account<'info, UserState>,
 
     pub signer: Signer<'info>,
@@ -21,6 +17,12 @@ pub struct UnfreezeAgent<'info> {
 pub fn unfreeze_agent(ctx: Context<UnfreezeAgent>) -> Result<()> {
     let agent = &mut ctx.accounts.agent;
     let signer = ctx.accounts.signer.key();
+
+    // Verify root_user matches agent's recorded root_user
+    require!(
+        agent.root_user == ctx.accounts.root_user.key(),
+        SableError::InvalidAncestorChain
+    );
 
     // Authorization: root_user owner is always allowed
     let is_root = ctx.accounts.root_user.owner == signer;

@@ -38,12 +38,23 @@ export function getPda(): PdaHelper {
   return _pda;
 }
 
+const MINT_CACHE_PATH = '/tmp/sable-test-mint.json';
+
 export async function getMint(): Promise<PublicKey> {
   if (_mint) return _mint;
+
+  // Reuse cached mint from previous run
+  if (fs.existsSync(MINT_CACHE_PATH)) {
+    const cached = JSON.parse(fs.readFileSync(MINT_CACHE_PATH, 'utf-8'));
+    _mint = new PublicKey(cached);
+    return _mint;
+  }
+
   const connection = getConnection();
   const wallet = getWallet();
   const mint = await createMint(connection, wallet, wallet.publicKey, null, 6);
   _mint = mint;
+  fs.writeFileSync(MINT_CACHE_PATH, JSON.stringify(mint.toBase58()));
   return mint;
 }
 
@@ -53,11 +64,15 @@ export async function ensureSdk(): Promise<SableClient> {
   const connection = getConnection();
   const wallet = getWallet();
 
-  // Airdrop if needed (only if nearly empty — devnet faucet is rate-limited)
+  // Airdrop if needed (only if nearly empty — devnet faucet is often dry)
   const balance = await connection.getBalance(wallet.publicKey);
-  if (balance < 0.01 * LAMPORTS_PER_SOL) {
-    await connection.requestAirdrop(wallet.publicKey, LAMPORTS_PER_SOL);
-    await sleep(500);
+  if (balance < 0.03 * LAMPORTS_PER_SOL) {
+    try {
+      await connection.requestAirdrop(wallet.publicKey, LAMPORTS_PER_SOL);
+      await sleep(500);
+    } catch {
+      // Faucet dry — proceed with whatever balance we have
+    }
   }
 
   const sdk = new SableClient({
@@ -109,7 +124,7 @@ async function getTestBank(): Promise<Keypair> {
   const connection = getConnection();
 
   const currentBalance = await connection.getBalance(bank.publicKey);
-  if (currentBalance < 0.2 * LAMPORTS_PER_SOL) {
+  if (currentBalance < 0.03 * LAMPORTS_PER_SOL) {
     // Need to fund. Try 10 SOL airdrop first, then split into two 5s.
     let funded = false;
     try {
@@ -133,8 +148,8 @@ async function getTestBank(): Promise<Keypair> {
     if (!funded) {
       const deployer = getWallet();
       const deployerBalance = await connection.getBalance(deployer.publicKey);
-      const transferLamports = Math.min(deployerBalance - 0.01 * LAMPORTS_PER_SOL, 5 * LAMPORTS_PER_SOL);
-      if (transferLamports < 0.2 * LAMPORTS_PER_SOL) {
+      const transferLamports = Math.min(deployerBalance - 0.005 * LAMPORTS_PER_SOL, 5 * LAMPORTS_PER_SOL);
+      if (transferLamports < 0.03 * LAMPORTS_PER_SOL) {
         throw new Error(
           `Deployer has insufficient SOL (${deployerBalance / LAMPORTS_PER_SOL}) to fund test bank. ` +
             `Send more devnet SOL to ${deployer.publicKey.toBase58()}`
@@ -150,9 +165,9 @@ async function getTestBank(): Promise<Keypair> {
 
     await sleep(500);
     const finalBalance = await connection.getBalance(bank.publicKey);
-    if (finalBalance < 0.2 * LAMPORTS_PER_SOL) {
+    if (finalBalance < 0.03 * LAMPORTS_PER_SOL) {
       throw new Error(
-        `Test bank funding failed: ${finalBalance / LAMPORTS_PER_SOL} SOL < 4 SOL required`
+        `Test bank funding failed: ${finalBalance / LAMPORTS_PER_SOL} SOL < 0.008 SOL required`
       );
     }
   }
@@ -161,26 +176,52 @@ async function getTestBank(): Promise<Keypair> {
   return bank;
 }
 
+async function ensureDeployerFunded(): Promise<void> {
+  const connection = getConnection();
+  const deployer = getWallet();
+  const balance = await connection.getBalance(deployer.publicKey);
+  if (balance < 0.003 * LAMPORTS_PER_SOL) {
+    const bank = await getTestBank();
+    const bankBalance = await connection.getBalance(bank.publicKey);
+    const needed = 0.003 * LAMPORTS_PER_SOL;
+    if (bankBalance > needed + 0.005 * LAMPORTS_PER_SOL) {
+      const tx = new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: bank.publicKey,
+          toPubkey: deployer.publicKey,
+          lamports: needed,
+        })
+      );
+      await sendAndConfirmTransaction(connection, tx, [bank]);
+      await sleep(500);
+    }
+  }
+}
+
 export async function setupUser(
   testUserKeypair?: Keypair
 ): Promise<{ sdk: SableClient; wallet: Keypair; mint: PublicKey }> {
   // Rate-limit mitigation: pause between specs
   await sleep(2000);
 
+  // Ensure program is initialized (Config + VaultAuthority) via deployer
+  await ensureSdk();
+
   const wallet = testUserKeypair || Keypair.generate();
   const connection = getConnection();
+  await ensureDeployerFunded();
   const mint = await getMint();
 
   // Fund test user from test bank
   const balance = await connection.getBalance(wallet.publicKey);
-  if (balance < 0.3 * LAMPORTS_PER_SOL) {
+  if (balance < 0.03 * LAMPORTS_PER_SOL) {
     const bank = await getTestBank();
 
-    // Pre-spec guard: bank must have >= 0.5 SOL
+    // Pre-spec guard: bank must have >= 0.008 SOL
     const bankBalance = await connection.getBalance(bank.publicKey);
-    if (bankBalance < 0.2 * LAMPORTS_PER_SOL) {
+    if (bankBalance < 0.03 * LAMPORTS_PER_SOL) {
       throw new Error(
-        `Test bank depleted: ${bankBalance / LAMPORTS_PER_SOL} SOL < 0.5 SOL. ` +
+        `Test bank depleted: ${bankBalance / LAMPORTS_PER_SOL} SOL < 0.008 SOL. ` +
           `Delete ${BANK_CACHE_PATH} and re-run to re-fund.`
       );
     }
@@ -188,7 +229,7 @@ export async function setupUser(
     const transferIx = SystemProgram.transfer({
       fromPubkey: bank.publicKey,
       toPubkey: wallet.publicKey,
-      lamports: 0.2 * LAMPORTS_PER_SOL,
+      lamports: 0.03 * LAMPORTS_PER_SOL,
     });
     await sendAndConfirmTransaction(connection, new Transaction().add(transferIx), [bank]);
     await sleep(500);
@@ -255,4 +296,15 @@ export function sleep(ms: number): Promise<void> {
 
 export function envIsSet(key: string): boolean {
   return !!process.env[key];
+}
+
+/** Get the validator's current unix timestamp (not wall clock). */
+export async function getValidatorTime(): Promise<number> {
+  const connection = getConnection();
+  const slot = await connection.getSlot();
+  const blockTime = await connection.getBlockTime(slot);
+  if (blockTime === null) {
+    throw new Error('Could not get validator block time');
+  }
+  return blockTime;
 }

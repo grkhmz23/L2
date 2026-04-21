@@ -74,14 +74,14 @@ function buildSpendPolicy(policy: SpendPolicy): any {
   };
 
   return {
-    per_tx_limit: policy.perTxLimit,
-    daily_limit: policy.dailyLimit,
-    total_limit: policy.totalLimit,
-    counterparty_mode:
+    perTxLimit: policy.perTxLimit,
+    dailyLimit: policy.dailyLimit,
+    totalLimit: policy.totalLimit,
+    counterpartyMode:
       policy.counterpartyMode === 'any' ? { any: {} } : { allowlistOnly: {} },
-    allowed_counterparties: padPubkeys(policy.allowedCounterparties),
-    allowed_mints: padPubkeys(policy.allowedMints),
-    expires_at: policy.expiresAt,
+    allowedCounterparties: padPubkeys(policy.allowedCounterparties),
+    allowedMints: padPubkeys(policy.allowedMints),
+    expiresAt: policy.expiresAt,
   };
 }
 
@@ -153,7 +153,7 @@ export class AgentsModule {
 
       const data = (await this.client.program.account.agentState.fetch(currentPk)) as any;
 
-      if (data.parent_kind?.user !== undefined) {
+      if (data.parentKind?.user !== undefined) {
         // Parent is a UserState — this is the root
         chain.unshift(data.parent as PublicKey);
         break;
@@ -185,7 +185,7 @@ export class AgentsModule {
 
       const data = (await this.client.program.account.agentState.fetch(currentPk)) as any;
 
-      if (data.parent_kind?.user !== undefined) {
+      if (data.parentKind?.user !== undefined) {
         // Parent is a UserState — this is the root, we're done
         break;
       }
@@ -235,10 +235,10 @@ export class AgentsModule {
     let nonce: number;
     if (parentKind === 'user') {
       const userState = await this.client.program.account.userState.fetch(parentPda);
-      nonce = userState.agent_count;
+      nonce = userState.agentCount;
     } else {
       const agentState = await this.client.program.account.agentState.fetch(parentPda);
-      nonce = agentState.child_count;
+      nonce = agentState.childCount;
     }
 
     const [agent] = this.client.pda.deriveAgentState(parentPda, nonce);
@@ -292,7 +292,7 @@ export class AgentsModule {
     const rootOwner = this.client.walletPublicKey!;
 
     const agentData = (await this.client.program.account.agentState.fetch(agent)) as any;
-    const [rootUser] = this.client.pda.deriveUserState(agentData.root_user as PublicKey);
+    const rootUser = agentData.rootUser as PublicKey;
 
     const remainingAccounts = asRemainingAccounts(zeroBalances);
 
@@ -405,7 +405,7 @@ export class AgentsModule {
 
     const rootOwner = this.client.walletPublicKey!;
     const agentData = (await this.client.program.account.agentState.fetch(agent)) as any;
-    const [rootUser] = this.client.pda.deriveUserState(agentData.root_user as PublicKey);
+    const rootUser = agentData.rootUser as PublicKey;
 
     const tx = await this.client.program.methods
       .setPolicy(buildSpendPolicy(policy))
@@ -438,7 +438,7 @@ export class AgentsModule {
 
     const signer = this.client.walletPublicKey!;
     const agentData = (await this.client.program.account.agentState.fetch(agent)) as any;
-    const [rootUser] = this.client.pda.deriveUserState(agentData.root_user as PublicKey);
+    const rootUser = agentData.rootUser as PublicKey;
 
     const ancestorChain = ancestors ?? (await this.buildAncestorChainForAuth(agent));
     const remainingAccounts = asRemainingAccounts(ancestorChain);
@@ -472,7 +472,7 @@ export class AgentsModule {
 
     const signer = this.client.walletPublicKey!;
     const agentData = (await this.client.program.account.agentState.fetch(agent)) as any;
-    const [rootUser] = this.client.pda.deriveUserState(agentData.root_user as PublicKey);
+    const rootUser = agentData.rootUser as PublicKey;
 
     const ancestorChain = ancestors ?? (await this.buildAncestorChainForAuth(agent));
     const remainingAccounts = asRemainingAccounts(ancestorChain);
@@ -503,7 +503,7 @@ export class AgentsModule {
 
     const rootOwner = this.client.walletPublicKey!;
     const agentData = (await this.client.program.account.agentState.fetch(agent)) as any;
-    const [rootUser] = this.client.pda.deriveUserState(agentData.root_user as PublicKey);
+    const rootUser = agentData.rootUser as PublicKey;
 
     const tx = await this.client.program.methods
       .revokeAgent()

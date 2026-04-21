@@ -58,17 +58,20 @@ pub fn cancel_task(ctx: Context<CancelTask>) -> Result<()> {
     let mint_key = task.mint;
 
     // Verify signer is the poster owner
-    let poster_data = ctx.accounts.poster.try_borrow_data()?;
-    if task.poster_kind == PosterKind::User {
-        let poster_state = UserState::try_deserialize(&mut &poster_data[..])
-            .map_err(|_| error!(SableError::InvalidRecipientAccounts))?;
-        require!(poster_state.owner == ctx.accounts.signer.key(), SableError::NotAuthorized);
-    } else {
-        let poster_state = AgentState::try_deserialize(&mut &poster_data[..])
-            .map_err(|_| error!(SableError::InvalidRecipientAccounts))?;
-        require!(poster_state.owner == ctx.accounts.signer.key(), SableError::AgentNotAuthorized);
-    }
-    drop(poster_data);
+    let poster_owner = {
+        let poster_data = ctx.accounts.poster.try_borrow_data()?;
+        if task.poster_kind == PosterKind::User {
+            let poster_state = UserState::try_deserialize(&mut &poster_data[..])
+                .map_err(|_| error!(SableError::InvalidRecipientAccounts))?;
+            require!(poster_state.owner == ctx.accounts.signer.key(), SableError::NotAuthorized);
+            poster_state.owner
+        } else {
+            let poster_state = AgentState::try_deserialize(&mut &poster_data[..])
+                .map_err(|_| error!(SableError::InvalidRecipientAccounts))?;
+            require!(poster_state.owner == ctx.accounts.signer.key(), SableError::AgentNotAuthorized);
+            poster_state.owner
+        }
+    };
 
     // Defense in depth: ensure the poster account provided matches the task's recorded poster
     require!(
@@ -78,7 +81,7 @@ pub fn cancel_task(ctx: Context<CancelTask>) -> Result<()> {
 
     // Credit refund back to poster balance
     if task.poster_kind == PosterKind::User {
-        credit_user_balance(&ctx.accounts.poster_balance, poster_key, mint_key, refund)?;
+        credit_user_balance(&ctx.accounts.poster_balance, poster_owner, mint_key, refund)?;
     } else {
         credit_agent_balance(&ctx.accounts.poster_balance, poster_key, mint_key, refund)?;
     }

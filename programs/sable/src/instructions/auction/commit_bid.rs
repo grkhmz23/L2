@@ -101,11 +101,16 @@ pub fn commit_bid(
     let bidder_data = ctx.accounts.bidder.try_borrow_data()?;
 
     if bidder_kind == BidderKind::User {
+        msg!("bidder_key: {}", bidder_key);
+        msg!("bidder_data_len: {}", bidder_data.len());
+        msg!("bidder_data_first_8: {:?}", &bidder_data[..8]);
         let bidder_state = UserState::try_deserialize(&mut &bidder_data[..])
-            .map_err(|_| error!(SableError::InvalidRecipientAccounts))?;
+            .map_err(|e| { msg!("UserState deserialize error: {:?}", e); error!(SableError::InvalidRecipientAccounts) })?;
         require!(bidder_state.owner == signer, SableError::NotAuthorized);
+        let bidder_owner = bidder_state.owner;
+        drop(bidder_data);
 
-        debit_bidder_user_balance(&ctx.accounts.bidder_balance, bidder_key, mint_key, deposit)?;
+        debit_bidder_user_balance(&ctx.accounts.bidder_balance, bidder_owner, mint_key, deposit)?;
     } else {
         let bidder_state = AgentState::try_deserialize(&mut &bidder_data[..])
             .map_err(|_| error!(SableError::InvalidRecipientAccounts))?;
@@ -115,6 +120,7 @@ pub fn commit_bid(
             !bidder_state.frozen && !bidder_state.revoked,
             SableError::AgentFrozenOrRevoked
         );
+        drop(bidder_data);
 
         // Verify ancestor chain if depth > 1
         if bidder_state.parent_kind == ParentKind::Agent {
@@ -139,9 +145,11 @@ pub fn commit_bid(
             SableError::InvalidRecipientAccounts
         );
 
-        let mut counters_data = ctx.accounts.agent_counters.try_borrow_mut_data()?;
-        let mut counters = AgentCounters::try_deserialize(&mut &counters_data[..])
-            .map_err(|_| error!(SableError::InvalidRecipientAccounts))?;
+        let mut counters = {
+            let counters_data = ctx.accounts.agent_counters.try_borrow_data()?;
+            AgentCounters::try_deserialize(&mut &counters_data[..])
+                .map_err(|_| error!(SableError::InvalidRecipientAccounts))?
+        };
 
         // Policy check: deposit is treated as an outbound transfer
         let updated_counters = validate_spend(
@@ -159,10 +167,8 @@ pub fn commit_bid(
         counters.spent_total = updated_counters.spent_total;
         counters.spent_today = updated_counters.spent_today;
         counters.current_day = updated_counters.current_day;
-        counters.serialize(&mut &mut counters_data[..])?;
-        drop(counters_data);
+        crate::state::write_account_state(&ctx.accounts.agent_counters, &counters)?;
     }
-    drop(bidder_data);
 
     // Credit deposit into task escrow
     task_escrow.amount = task_escrow
@@ -182,6 +188,7 @@ pub fn commit_bid(
     bid.bump = ctx.bumps.bid;
     bid.task = task.key();
     bid.bidder = bidder_key;
+    bid.bidder_owner = ctx.accounts.bidder_owner.key();
     bid.bidder_kind = bidder_kind;
     bid.commit_hash = commit_hash;
     bid.deposit = deposit;

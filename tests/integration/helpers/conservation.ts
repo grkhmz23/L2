@@ -10,9 +10,9 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
     } catch (err: any) {
       lastError = err;
       const message = err?.message || '';
-      const is429 = message.includes('429') || message.includes('Too Many Requests');
+      const is429 = message.includes('429') || message.includes('Too Many Requests') || err?.code === 429 || err?.status === 429;
       if (!is429 || attempt === maxRetries) throw err;
-      const delay = Math.min(1000 * 2 ** attempt, 8000);
+      const delay = Math.min(2000 * 2 ** attempt, 8000);
       await sleep(delay);
     }
   }
