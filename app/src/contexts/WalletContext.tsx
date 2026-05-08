@@ -8,10 +8,8 @@ import {
   useWallet,
 } from '@solana/wallet-adapter-react';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
-import {
-  PhantomWalletAdapter,
-  SolflareWalletAdapter,
-} from '@solana/wallet-adapter-wallets';
+import { PhantomWalletAdapter } from '@solana/wallet-adapter-phantom';
+import { SolflareWalletAdapter } from '@solana/wallet-adapter-solflare';
 import {
   WalletModalProvider,
   WalletMultiButton,
@@ -77,6 +75,7 @@ const WalletContextInner: FC<{ children: ReactNode }> = ({ children }) => {
       connection,
       // Router connection is the same as the ER connection since we switched to router
       routerConnection: routingMode === 'er' ? connection : undefined,
+      paymentsApiUrl: env.PAYMENTS_API_URL || undefined,
       wallet: {
         publicKey: wallet.publicKey,
         signTransaction: wallet.signTransaction,
@@ -92,6 +91,7 @@ const WalletContextInner: FC<{ children: ReactNode }> = ({ children }) => {
     return new SableSdk({
       programId: new PublicKey(env.SABLE_PROGRAM_ID),
       connection: baseConnection,
+      paymentsApiUrl: env.PAYMENTS_API_URL || undefined,
       wallet: {
         publicKey: wallet.publicKey,
         signTransaction: wallet.signTransaction,

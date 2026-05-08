@@ -76,7 +76,13 @@ export class SableClient {
       AnchorProvider.defaultOptions()
     );
 
-    this.program = new Program(idl as any, this.provider) as any;
+    this.program = new Program(
+      {
+        ...(idl as any),
+        address: programId.toBase58(),
+      },
+      this.provider
+    ) as any;
 
     // Initialize modules
     this.treasury = new TreasuryModule(this);
@@ -86,14 +92,22 @@ export class SableClient {
     this.auctions = new AuctionsModule(this);
 
     // Initialize payments adapter from env if available
-    const paymentsApiUrl =
+    const paymentsApiUrl = config.paymentsApiUrl || (
       typeof process !== 'undefined'
-        ? (process.env.SABLE_PRIVATE_PAYMENTS_API_URL || process.env.NEXT_PUBLIC_SABLE_PRIVATE_PAYMENTS_API_URL || '')
-        : '';
-    const paymentsApiKey =
+        ? (
+            process.env.SABLE_PRIVATE_PAYMENTS_API_URL ||
+            process.env.NEXT_PUBLIC_SABLE_PRIVATE_PAYMENTS_API_URL ||
+            process.env.SABLE_PAYMENTS_API ||
+            process.env.NEXT_PUBLIC_SABLE_PAYMENTS_API ||
+            ''
+          )
+        : ''
+    );
+    const paymentsApiKey = config.paymentsApiKey || (
       typeof process !== 'undefined'
         ? (process.env.SABLE_PRIVATE_PAYMENTS_API_KEY || process.env.NEXT_PUBLIC_SABLE_PRIVATE_PAYMENTS_API_KEY || undefined)
-        : undefined;
+        : undefined
+    );
 
     if (paymentsApiUrl) {
       this.payments = new SablePayments({

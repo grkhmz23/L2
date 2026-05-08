@@ -723,7 +723,7 @@ function SpawnAgentModal({
           <div className="rounded-2xl border border-amber-300/15 bg-amber-300/5 p-4">
             <p className="text-[10px] uppercase tracking-[0.2em] text-amber-200/70">Keypair</p>
             <p className="mt-2 text-xs text-amber-100/80">
-              This keypair controls the agent's spending. Store securely.
+              This keypair controls the agent&apos;s spending. Store securely.
             </p>
             {keypair ? (
               <div className="mt-3 space-y-2">

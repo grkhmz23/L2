@@ -27,7 +27,7 @@ export default function LandingPage() {
 
           <div className="flex items-center gap-3">
             <Link
-              href="https://github.com/magicblock-labs/Sable/blob/main/ARCHITECTURE.md"
+              href="https://github.com/magicblock-labs/Sable/blob/main/docs/architecture.md"
               target="_blank"
               rel="noopener noreferrer"
               className="hidden text-xs uppercase tracking-[0.18em] text-zinc-400 transition hover:text-zinc-200 sm:inline-block"
@@ -53,14 +53,14 @@ export default function LandingPage() {
               money for AI agents.
             </h2>
             <p className="mt-5 max-w-2xl text-sm leading-relaxed text-zinc-400 md:text-base">
-              Sable is a private programmable money layer for AI agents on Solana. Built on
-              MagicBlock ER + PER, it gives agents hierarchical treasuries, sealed-bid auctions,
-              and x402 payments — all with private balance semantics.
+              Sable is a Solana agent treasury prototype with MagicBlock ER delegation hooks,
+              PER permission metadata, hierarchical treasuries, sealed-bid auctions, and an x402
+              demo path.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-2">
               <Pill tone="amber">Hierarchical agent treasuries</Pill>
-              <Pill>Private ephemeral balances</Pill>
+              <Pill>ER / PER integration hooks</Pill>
               <Pill>Sealed-bid task auctions</Pill>
               <Pill>x402 pay-per-request</Pill>
             </div>
@@ -70,7 +70,7 @@ export default function LandingPage() {
                 <LuxuryButton>Create Treasury</LuxuryButton>
               </Link>
               <Link
-                href="https://github.com/magicblock-labs/Sable/blob/main/ARCHITECTURE.md"
+                href="https://github.com/magicblock-labs/Sable/blob/main/docs/architecture.md"
                 target="_blank"
                 rel="noopener noreferrer"
               >

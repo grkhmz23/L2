@@ -34,7 +34,7 @@ export const env: EnvConfig = {
   MAGICBLOCK_RPC_URL: MAGICBLOCK_RPC_URL_ENV || null,
   SABLE_PROGRAM_ID:
     PROGRAM_ID_ENV || 'SaSAXcdWhyr1KD8TKRg6K7WPuxcPLZJHKEwsjQgL5Di',
-  PAYMENTS_API_URL: PAYMENTS_API_URL_ENV || 'https://payments.magicblock.app',
+  PAYMENTS_API_URL: PAYMENTS_API_URL_ENV || '',
   PER_HTTP_URL: PER_HTTP_URL_ENV || 'https://devnet-tee.magicblock.app',
   PER_WS_URL: PER_WS_URL_ENV || 'wss://tee.magicblock.app',
   USDC_MINT: USDC_MINT_ENV || '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU',

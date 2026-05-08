@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PublicKey } from '@solana/web3.js';
 import { SableSdk, DelegationStatus } from '@sable/sdk';
 import { GlassPanel, LuxuryButton, Pill, truncateAddress, cn } from '@/components/ui/luxury';
@@ -30,7 +30,7 @@ export function DelegationStatusComponent({
   );
   const ownerKey = owner?.toBase58() ?? '';
 
-  const fetchStatus = async () => {
+  const fetchStatus = useCallback(async () => {
     if (!sdk || !owner) return;
 
     try {
@@ -43,7 +43,7 @@ export function DelegationStatusComponent({
     } finally {
       setLoading(false);
     }
-  };
+  }, [sdk, owner, mints]);
 
   useEffect(() => {
     fetchStatus();
@@ -52,7 +52,7 @@ export function DelegationStatusComponent({
       const interval = setInterval(fetchStatus, refreshInterval);
       return () => clearInterval(interval);
     }
-  }, [sdk, ownerKey, mintsKey, refreshInterval]);
+  }, [fetchStatus, ownerKey, mintsKey, refreshInterval]);
 
   const delegatedCount = status.filter((s) => s.isDelegated).length;
   const totalCount = status.length;

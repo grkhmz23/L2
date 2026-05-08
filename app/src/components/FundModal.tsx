@@ -102,7 +102,7 @@ export function FundModal({ isOpen, onClose, onComplete }: FundModalProps) {
         <SectionHeader
           eyebrow="Treasury Funding"
           title="Fund with USDC"
-          subtitle="Deposit USDC into your treasury via the Private Payments API."
+          subtitle="Optional Private Payments API path. Requires a configured endpoint; use direct test-mint deposits for local demos."
           action={
             <LuxuryButton variant="ghost" className="px-3 py-2" onClick={onClose}>
               Close

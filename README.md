@@ -1,6 +1,6 @@
-# Sable — Private Programmable Money for AI Agents
+# Sable — Solana Agent Treasury Prototype
 
-Sable is a privacy-first money layer for autonomous agents on Solana. It combines hierarchical agent treasuries, sealed-bid auctions, and x402 pay-per-request payments — all running inside MagicBlock's Private Ephemeral Rollups so balances and bids stay invisible on L1 until explicitly revealed.
+Sable is a Solana agent treasury prototype. It combines vault-backed ledger balances, hierarchical agent treasuries, sealed-bid auctions, and an x402 demo path. The program includes MagicBlock ER delegation hooks and PER permission metadata creation, but Private Payments API and live PER balance reads require external services/credentials and should be treated as partially integrated rather than production-ready.
 
 ![x402 Demo](docs/x402-demo.gif)
 
@@ -37,9 +37,9 @@ Sable is a privacy-first money layer for autonomous agents on Solana. It combine
 
 | Primitive | Where | File |
 |---|---|---|
-| **Ephemeral Rollup (ER)** | Delegate UserState + balances for <500ms internal transfers and auction phases | `programs/sable/src/lib.rs:930-966` |
-| **Private Ephemeral Rollup (PER)** | Account-level READ/WRITE permissions on balances via permission metadata PDAs | `programs/sable/src/instructions/permission/` |
-| **Private Payments API** | USDC on/off-ramp with AML/OFAC compliance for treasury funding | `packages/sdk/src/payments.ts` |
+| **Ephemeral Rollup (ER)** | Delegate UserState + balances for ER-routed internal transfers | `programs/sable/src/lib.rs` |
+| **Private Ephemeral Rollup (PER)** | Permission metadata PDAs plus SDK session hooks for private reads when middleware is available | `programs/sable/src/lib.rs`, `packages/sdk/src/session.ts` |
+| **Private Payments API** | Adapter and mock server exist; live endpoint use is env-driven and not assumed by default | `packages/sdk/src/payments.ts`, `services/payments-api-mock/` |
 
 ## Quickstart
 
@@ -67,13 +67,11 @@ The app runs at `http://localhost:3000`. Connect your devnet wallet to explore t
 
 ## Architecture
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the full system design, account layout, instruction map, and invariants.
-
-Deeper technical documentation lives in [docs/architecture.md](docs/architecture.md).
+See [docs/architecture.md](docs/architecture.md) for the system design, account layout, instruction map, and invariants.
 
 ## x402 Integration
 
-Third-party merchants can accept Sable agent payments in under 500ms. See [docs/x402-integration.md](docs/x402-integration.md) for the middleware integration guide.
+Third-party merchants can experiment with Sable agent payments through the x402 facilitator. See [docs/x402-integration.md](docs/x402-integration.md) for the middleware integration guide.
 
 ## Security
 

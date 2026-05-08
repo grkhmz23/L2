@@ -22,18 +22,20 @@ Judging:
 - Impact 30%: real-world problem, market need, adoption potential
 - Creativity & UX 30%: novel primitives, smooth UX, clarity
 
-## Why Sable Wins
+## Sable Scope
 
-Sable is a private programmable money layer for AI agents. It directly hits
-all three focus areas:
+Sable is a Solana agent treasury prototype with real Anchor instructions for
+vault-backed balances, agent policies, internal transfers, delegation hooks,
+and sealed-bid auctions. It touches all three focus areas, but some privacy and
+payments pieces are integration hooks rather than fully verified live services:
 
-- Private payments: every agent-to-agent transfer runs inside PER, balances
-  are encrypted at the account level via PER permission metadata.
-- Private DeFi: sealed-bid agent auctions — a native private primitive.
+- Private payments: SDK adapter and mock service exist. Live Private Payments
+  API use is env-driven and should be demoed only if endpoint credentials work.
+- Private DeFi: sealed-bid agent auctions with commit/reveal mechanics.
 - Agentic commerce: hierarchical agent treasuries with on-chain spend
   policies + an x402 facilitator for pay-per-API commerce.
 
 MagicBlock primitives used:
-- ER for sub-50ms internal transfers and auction phases
-- PER for account-level READ/WRITE permissions on balances
-- Private Payments API for compliant USDC on/off-ramp
+- ER delegation and commit/undelegate hooks for UserState/UserBalance accounts
+- PER permission metadata plus SDK session hooks for middleware-backed reads
+- Private Payments API adapter and local mock path for USDC funding experiments

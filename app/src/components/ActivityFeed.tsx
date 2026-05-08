@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useWalletContext } from '@/contexts/WalletContext';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
@@ -30,7 +30,7 @@ export function ActivityFeed() {
   const [lastPoll, setLastPoll] = useState<Date | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const programId = new PublicKey(env.SABLE_PROGRAM_ID);
+  const programId = useMemo(() => new PublicKey(env.SABLE_PROGRAM_ID), []);
 
   const fetchActivity = useCallback(async () => {
     if (!solanaSdk || !publicKey) return;

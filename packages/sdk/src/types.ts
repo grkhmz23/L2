@@ -22,6 +22,10 @@ export interface SdkConfig {
   connection: Connection;
   /** Magic Router connection for ER-bound transactions */
   routerConnection?: Connection;
+  /** Optional Private Payments API endpoint. If unset, payments helpers throw clearly on use. */
+  paymentsApiUrl?: string;
+  /** Optional Private Payments API key. */
+  paymentsApiKey?: string;
   wallet?: {
     publicKey: PublicKey;
     signTransaction: any;

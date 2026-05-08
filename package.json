@@ -1,18 +1,20 @@
 {
   "name": "sable",
   "version": "1.0.0",
-  "description": "Sable — private programmable money for AI agents on Solana, built on MagicBlock ER + PER + Private Payments API",
+  "description": "Sable — Solana agent treasury prototype with MagicBlock ER/PER hooks and mockable payments integrations",
   "private": true,
   "scripts": {
     "install:all": "pnpm install",
-    "anchor:build": "cd programs/sable && cargo build-sbf",
+    "anchor:build": "cd programs/sable && cargo build-sbf --tools-version v1.48",
     "anchor:test": "cd programs/sable && anchor test",
     "anchor:deploy:devnet": "cd programs/sable && anchor deploy --provider.cluster devnet",
     "app:dev": "cd app && pnpm dev",
     "app:build": "cd app && pnpm build",
     "app:lint": "cd app && pnpm lint",
     "app:typecheck": "cd app && pnpm typecheck",
+    "app:smoke": "vitest run --config app/vitest.config.ts",
     "idl:sync": "node scripts/idl-sync.js",
+    "dev:create-test-mint": "tsx scripts/create-test-mint.ts",
     "build:all": "pnpm -r build",
     "build": "pnpm build:all",
     "clean": "find . -type d -name node_modules -exec rm -rf {} + 2>/dev/null; find . -type d -name target -exec rm -rf {} + 2>/dev/null; find . -type d -name dist -exec rm -rf {} + 2>/dev/null; echo 'Cleaned build artifacts'",
@@ -26,14 +28,20 @@
     "verify": "pnpm lint && pnpm typecheck && pnpm build:all"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/chai": "^5.2.3",
     "@types/mocha": "^10.0.10",
     "@types/node": "^20.10.0",
+    "@vitejs/plugin-react": "^6.0.1",
     "chai": "^6.2.2",
     "eslint": "^8.55.0",
+    "jsdom": "^29.1.1",
     "mocha": "^11.7.5",
+    "ts-mocha": "^11.1.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.3.0"
+    "typescript": "^5.3.0",
+    "vitest": "^4.1.5"
   },
   "engines": {
     "node": ">=20.0.0",

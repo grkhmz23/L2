@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useWalletContext } from '@/contexts/WalletContext';
 import { PublicKey } from '@solana/web3.js';
-import { BN } from '@coral-xyz/anchor';
 import { useWallet } from '@solana/wallet-adapter-react';
 import type { TransferItem as SdkTransferItem } from '@sable/sdk';
+import { getMintDecimals, parseTokenAmount } from '@/utils/amount';
 import { DelegationStatusComponent } from '@/components/DelegationStatus';
 import {
   GlassPanel,
@@ -117,7 +117,7 @@ function TreasuryConsole() {
 /* ───────── DepositForm (unchanged logic) ───────── */
 
 function DepositForm() {
-  const { sdk } = useWalletContext();
+  const { sdk, solanaConnection } = useWalletContext();
   const [mint, setMint] = useState('');
   const [amount, setAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -129,9 +129,12 @@ function DepositForm() {
     try {
       const result = await sdk.deposit({
         mint: new PublicKey(mint.trim()),
-        amount: new BN(parseFloat(amount) * 1e9),
+        amount: parseTokenAmount(
+          amount,
+          await getMintDecimals(solanaConnection, new PublicKey(mint.trim()))
+        ),
       });
-      toast.success('Deposit successful');
+      toast.success(`Deposit successful: ${result.signature}`);
       console.log('Deposit transaction:', result.signature);
       setAmount('');
     } catch (error: any) {
@@ -190,7 +193,7 @@ type SendStage =
   | 'done';
 
 function SendForm() {
-  const { sdk, solanaSdk, routingMode } = useWalletContext();
+  const { sdk, solanaSdk, routingMode, solanaConnection } = useWalletContext();
   const { publicKey } = useWallet();
   const [mint, setMint] = useState('');
   const [recipients, setRecipients] = useState('');
@@ -251,6 +254,7 @@ function SendForm() {
 
     try {
       const mintPubkey = new PublicKey(mint.trim());
+      const decimals = await getMintDecimals(solanaConnection, mintPubkey);
 
       let items: SdkTransferItem[];
       if (mode === 'simple') {
@@ -261,11 +265,27 @@ function SendForm() {
         const addresses = recipients.split(',').map((s) => s.trim()).filter(Boolean);
         items = addresses.map((addr) => ({
           toOwner: new PublicKey(addr),
-          amount: new BN(parseFloat(defaultAmount) * 1e9),
+          amount: parseTokenAmount(defaultAmount, decimals),
           kind: 'user' as const,
         }));
       } else {
-        items = sdk.parseBatchTransferInput(recipients, defaultAmount);
+        items = recipients
+          .trim()
+          .split('\n')
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .map((line) => {
+            const [address, lineAmount] = line.split(',').map((part) => part.trim());
+            const amountForLine = lineAmount || defaultAmount;
+            if (!address || !amountForLine) {
+              throw new Error('Batch rows must be address,amount or provide a default amount');
+            }
+            return {
+              toOwner: new PublicKey(address),
+              amount: parseTokenAmount(amountForLine, decimals),
+              kind: 'user' as const,
+            };
+          });
       }
 
       if (items.length === 0) {
@@ -504,7 +524,7 @@ function SendForm() {
 /* ───────── WithdrawForm (unchanged logic) ───────── */
 
 function WithdrawForm() {
-  const { sdk } = useWalletContext();
+  const { sdk, solanaConnection } = useWalletContext();
   const [mint, setMint] = useState('');
   const [amount, setAmount] = useState('');
   const [destination, setDestination] = useState('');
@@ -515,12 +535,13 @@ function WithdrawForm() {
 
     setIsLoading(true);
     try {
+      const mintPubkey = new PublicKey(mint.trim());
       const result = await sdk.withdraw({
-        mint: new PublicKey(mint.trim()),
-        amount: new BN(parseFloat(amount) * 1e9),
+        mint: mintPubkey,
+        amount: parseTokenAmount(amount, await getMintDecimals(solanaConnection, mintPubkey)),
         destinationAta: destination.trim() ? new PublicKey(destination.trim()) : undefined,
       });
-      toast.success('Withdrawal successful');
+      toast.success(`Withdrawal successful: ${result.signature}`);
       console.log('Withdraw transaction:', result.signature);
       setAmount('');
     } catch (error: any) {

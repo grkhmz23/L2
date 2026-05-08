@@ -8,10 +8,10 @@
 
 ## Scene 1: Opening (0:00–0:20)
 
-**Visual:** Black screen. Sable logo fades in. Text: "Private Programmable Money for AI Agents."
+**Visual:** Black screen. Sable logo fades in. Text: "Solana Agent Treasury Prototype."
 
 **Voiceover:**
-> "Sable is private programmable money for AI agents on Solana. Built on MagicBlock's Ephemeral Rollups, it lets autonomous agents hold balances, bid on tasks, and pay for API calls — without exposing amounts on-chain."
+> "Sable is a Solana agent treasury prototype. It lets users create vault-backed ledger balances, delegate accounts toward MagicBlock ER, spawn spending-limited agents, and run sealed-bid task auctions."
 
 **Transition:** Cut to app at `localhost:3000`, wallet already connected.
 
@@ -19,17 +19,17 @@
 
 ## Scene 2: Treasury Console — Fund & Delegate (0:20–0:55)
 
-**Visual:** `/` — TreasuryView. Shows "$0.00" balance. User clicks "Fund with USDC."
+**Visual:** `/app` — Treasury console. Shows the treasury and transfer forms.
 
 **Voiceover:**
-> "Every user starts with a treasury. I can fund it with USDC through MagicBlock's Private Payments API, which handles KYC and AML off-chain."
+> "Every user starts by creating a treasury. For a reliable local demo, I use a test SPL mint and deposit through the Anchor program. The Private Payments API adapter exists, but I only demo it when a live endpoint is configured."
 
 **Action:**
-1. Click "Fund with USDC"
-2. Enter amount: 100
-3. Click "Confirm"
-4. Wait for transaction confirmation (Devnet, ~5s)
-5. Balance updates to "$100.00"
+1. Connect wallet
+2. Create treasury / complete setup
+3. Add the test mint
+4. Deposit test tokens into the vault
+5. Balance updates in the treasury list
 
 **Voiceover:**
 > "Once funded, I can delegate my balances to MagicBlock's Ephemeral Rollup for fast, cheap internal transfers."

@@ -26,6 +26,7 @@ export function UserStatus() {
   const [setupStep, setSetupStep] = useState<SetupStep>('not_joined');
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [overlayDismissed, setOverlayDismissed] = useState(false);
+  const publicKeyString = publicKey?.toBase58() ?? '';
 
   const checkStatus = useCallback(async () => {
     if (!sdk || !publicKey) return;
@@ -58,7 +59,7 @@ export function UserStatus() {
 
   useEffect(() => {
     setOverlayDismissed(false);
-  }, [setupStep, publicKey?.toBase58()]);
+  }, [setupStep, publicKeyString]);
 
   const handleJoin = async () => {
     if (!sdk) return;

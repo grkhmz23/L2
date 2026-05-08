@@ -34,3 +34,6 @@ wincode-derive = "=0.4.3"
 # which cannot parse manifests using `edition = "2024"`. Several transitive dependencies
 # of ephemeral-rollups-sdk have adopted edition2024. These pins force compatible versions.
 # This workaround can be removed once platform-tools ships cargo >= 1.85.0.
+
+[profile.release]
+overflow-checks = true
