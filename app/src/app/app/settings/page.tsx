@@ -1,6 +1,6 @@
 'use client';
 
-import { GlassPanel, SectionHeader, Pill, LuxuryButton } from '@/components/ui/luxury';
+import { CopyableAddress, GlassPanel, SectionHeader, Pill, LuxuryButton } from '@/components/ui/luxury';
 import { useWalletContext } from '@/contexts/WalletContext';
 import { env } from '@/utils/env';
 
@@ -18,7 +18,7 @@ export default function SettingsPage() {
       <GlassPanel className="p-6">
         <div className="space-y-6">
           {/* Routing mode */}
-          <div className="rounded-2xl border border-white/8 bg-black/35 p-4">
+          <div className="rounded-lg border border-white/8 bg-black/35 p-4">
             <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Routing Mode</p>
             <div className="mt-3 flex items-center gap-3">
               <div className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] p-0.5">
@@ -45,29 +45,35 @@ export default function SettingsPage() {
               </div>
               <span className="text-xs text-zinc-400">
                 {routingMode === 'er'
-                  ? 'Transactions auto-routed via Magic Router'
+                  ? 'Uses the Magic Router endpoint when it is configured'
                   : 'Direct Solana base layer'}
               </span>
             </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-white/8 bg-black/35 p-4">
+            <div className="rounded-lg border border-white/8 bg-black/35 p-4">
               <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Solana RPC</p>
-              <p className="mt-2 font-mono text-xs text-zinc-300 break-all">{env.SOLANA_RPC_URL}</p>
+              <div className="mt-2">
+                <CopyableAddress value={env.SOLANA_RPC_URL} label="Copy RPC URL" head={24} tail={14} />
+              </div>
             </div>
-            <div className="rounded-2xl border border-white/8 bg-black/35 p-4">
+            <div className="rounded-lg border border-white/8 bg-black/35 p-4">
               <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Magic Router</p>
-              <p className="mt-2 font-mono text-xs text-zinc-300 break-all">{env.MAGIC_ROUTER_URL}</p>
+              <div className="mt-2">
+                <CopyableAddress value={env.MAGIC_ROUTER_URL} label="Copy Magic Router URL" head={24} tail={14} />
+              </div>
             </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-white/8 bg-black/35 p-4">
+            <div className="rounded-lg border border-white/8 bg-black/35 p-4">
               <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Program ID</p>
-              <p className="mt-2 font-mono text-xs text-zinc-300 break-all">{env.SABLE_PROGRAM_ID}</p>
+              <div className="mt-2">
+                <CopyableAddress value={env.SABLE_PROGRAM_ID} label="Copy program ID" head={12} tail={10} />
+              </div>
             </div>
-            <div className="rounded-2xl border border-white/8 bg-black/35 p-4">
+            <div className="rounded-lg border border-white/8 bg-black/35 p-4">
               <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">App Version</p>
               <p className="mt-2 text-xs text-zinc-300">0.1.0</p>
             </div>

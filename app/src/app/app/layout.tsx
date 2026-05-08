@@ -7,7 +7,7 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="sable-shell min-h-screen lg:pl-60">
+    <div className="sable-shell min-h-screen lg:pl-56">
       <div className="sable-grid-overlay" />
       <div className="sable-noise-overlay" />
 

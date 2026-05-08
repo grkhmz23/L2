@@ -23,8 +23,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Sable — Private Treasury for AI Agents',
-  description: 'Sable is a private programmable money layer for AI agents on Solana, built on MagicBlock ER + PER',
+  title: 'Sable - Agent Treasury on Solana',
+  description: 'Sable is a programmable agent treasury prototype on Solana with Anchor vault flows and MagicBlock ER hooks.',
 };
 
 export default function RootLayout({

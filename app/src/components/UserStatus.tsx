@@ -7,10 +7,10 @@ import { WSOL_MINT } from '@sable/sdk';
 import { CompleteSetupModal } from './CompleteSetupModal';
 import {
   GlassPanel,
+  CopyableAddress,
   LuxuryButton,
   Pill,
   SectionHeader,
-  truncateAddress,
 } from '@/components/ui/luxury';
 import toast from 'react-hot-toast';
 
@@ -188,19 +188,15 @@ export function UserStatus() {
               <Pill>wSOL Default Mint Included</Pill>
             </div>
             {publicKey ? (
-              <p className="mt-3 text-xs text-zinc-400">
-                Connected owner:{' '}
-                <span className="font-mono text-zinc-300">
-                  {truncateAddress(publicKey.toBase58(), 12, 10)}
-                </span>
+              <p className="mt-3 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
+                <span>Connected owner:</span>
+                <CopyableAddress value={publicKey.toBase58()} head={10} tail={8} />
               </p>
             ) : null}
             {userState ? (
-              <p className="mt-1 text-xs text-zinc-500">
-                UserState owner:{' '}
-                <span className="font-mono text-zinc-400">
-                  {truncateAddress(userState.owner.toBase58(), 12, 10)}
-                </span>
+              <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+                <span>UserState owner:</span>
+                <CopyableAddress value={userState.owner.toBase58()} head={10} tail={8} />
               </p>
             ) : null}
           </div>
@@ -221,7 +217,7 @@ export function UserStatus() {
               isLoading={isLoading}
               disabled={!sdk}
             >
-              Add Assets
+              Add Asset
             </LuxuryButton>
           </div>
 
@@ -233,7 +229,7 @@ export function UserStatus() {
               isLoading={isLoading}
               disabled={!sdk}
             >
-              Add wSOL Asset
+              Add wSOL Balance
             </LuxuryButton>
           ) : null}
         </div>
@@ -298,7 +294,7 @@ function SetupOverlay({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-xl" />
-      <GlassPanel className="relative w-full max-w-2xl p-6 md:p-8" highlight>
+      <GlassPanel className="relative max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto p-5 sable-subtle-scrollbar md:p-7" highlight>
         <div className="absolute right-4 top-4">
           <LuxuryButton variant="ghost" className="px-3 py-2" onClick={onDismiss}>
             Dismiss
@@ -314,36 +310,38 @@ function SetupOverlay({
           </h2>
           <p className="mt-4 text-sm leading-relaxed text-zinc-400">
             {notJoined
-              ? 'Initialize your Sable treasury with a UserState PDA and balance accounts. When delegated to PER, your balances remain private — only you can read them.'
-              : 'Your treasury identity exists, but the default wSOL balance PDA is still missing. Complete setup to enable agent funding and private transfers.'}
+              ? 'Initialize your Sable treasury with a UserState PDA and balance accounts. Direct Anchor vault actions work now; ER/PER paths require configured MagicBlock services.'
+              : 'Your treasury identity exists, but the default wSOL balance PDA is still missing. Complete setup to enable agent funding and vault transfers.'}
           </p>
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <div className="rounded-2xl border border-white/8 bg-black/35 p-4">
+          <div className="rounded-lg border border-white/8 bg-black/35 p-4">
             <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Base Asset</p>
-            <p className="mt-2 font-mono text-amber-100">{WSOL_MINT.toBase58()}</p>
+            <div className="mt-2">
+              <CopyableAddress value={WSOL_MINT.toBase58()} head={12} tail={8} />
+            </div>
             <p className="mt-2 text-xs text-zinc-500">wSOL is included by default for gas and base operations.</p>
           </div>
-          <div className="rounded-2xl border border-white/8 bg-black/35 p-4">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Privacy</p>
-            <p className="mt-2 text-white">Balances hidden when delegated to PER</p>
-            <p className="mt-2 text-xs text-zinc-500">Delegation moves state to MagicBlock ER with private read semantics.</p>
+          <div className="rounded-lg border border-white/8 bg-black/35 p-4">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">MagicBlock</p>
+            <p className="mt-2 text-white">ER delegation hooks available</p>
+            <p className="mt-2 text-xs text-zinc-500">PER/private payments require configured MagicBlock services.</p>
           </div>
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
           {notJoined ? (
             <LuxuryButton fullWidth variant="secondary" onClick={onJoin} isLoading={isLoading}>
-              Create Identity
+              Create Treasury
             </LuxuryButton>
           ) : (
             <LuxuryButton fullWidth variant="secondary" onClick={onQuickSetup} isLoading={isLoading}>
-              Add wSOL
+              Add wSOL Balance
             </LuxuryButton>
           )}
           <LuxuryButton fullWidth onClick={onFullSetup} isLoading={isLoading}>
-            Add Assets
+            Add Asset
           </LuxuryButton>
           <LuxuryButton fullWidth variant="ghost" onClick={onDismiss}>
             Continue Browsing

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PublicKey } from '@solana/web3.js';
 import { SableSdk, DelegationStatus } from '@sable/sdk';
-import { GlassPanel, LuxuryButton, Pill, truncateAddress, cn } from '@/components/ui/luxury';
+import { CopyableAddress, GlassPanel, LuxuryButton, Pill, cn } from '@/components/ui/luxury';
 
 interface DelegationStatusProps {
   sdk: SableSdk | null;
@@ -63,11 +63,11 @@ export function DelegationStatusComponent({
   }
 
   const body = (
-    <div className={cn('p-4', embedded ? 'rounded-2xl border border-white/8 bg-black/30' : '')}>
+    <div className={cn('p-4', embedded ? 'rounded-lg border border-white/8 bg-black/30' : '')}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-[10px] uppercase tracking-[0.25em] text-zinc-500">
-            Private Mode Status
+            ER Delegation Status
           </p>
           <p className="mt-1 text-sm text-zinc-300">
             {delegatedCount} of {totalCount} tracked account(s) delegated
@@ -116,15 +116,15 @@ export function DelegationStatusComponent({
           {status.map((item, idx) => (
             <div
               key={item.account.toBase58()}
-              className="flex flex-col gap-2 rounded-xl border border-white/6 bg-white/[0.02] p-3 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-2 rounded-lg border border-white/6 bg-white/[0.02] p-3 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="min-w-0">
                 <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">
                   {idx === 0 ? 'UserState' : `UserBalance #${idx}`}
                 </p>
-                <p className="mt-1 font-mono text-xs text-zinc-300">
-                  {truncateAddress(item.account.toBase58(), 12, 12)}
-                </p>
+                <div className="mt-2">
+                  <CopyableAddress value={item.account.toBase58()} head={10} tail={8} />
+                </div>
               </div>
               <Pill tone={item.isDelegated ? 'green' : 'default'}>
                 {item.isDelegated ? 'Delegated' : 'L1'}
@@ -134,9 +134,9 @@ export function DelegationStatusComponent({
         </div>
       ) : null}
 
-      <div className="mt-4 rounded-xl border border-white/6 bg-white/[0.02] p-3">
+      <div className="mt-4 rounded-lg border border-white/6 bg-white/[0.02] p-3">
         <p className="text-xs text-zinc-400">
-          Private mode is active when accounts are delegated to the MagicBlock delegation program. In this state, balances are readable only by the owner via PER session keys.
+          ER delegation is active when accounts are delegated to the MagicBlock delegation program. PER/session-key reads require configured MagicBlock services.
         </p>
       </div>
     </div>

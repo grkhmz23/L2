@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { WalletMultiButton } from '@/contexts/WalletContext';
-import { GlassPanel, LuxuryButton, Pill } from '@/components/ui/luxury';
+import { GlassPanel, LuxuryButton, Pill, SableLogo } from '@/components/ui/luxury';
 import { useWallet } from '@solana/wallet-adapter-react';
 
 export default function LandingPage() {
@@ -15,15 +15,7 @@ export default function LandingPage() {
 
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1500px] flex-col px-4 py-6 md:px-8 lg:px-12">
         <nav className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-full border border-[rgba(214,190,112,0.25)] bg-[radial-gradient(circle,rgba(252,246,186,0.16),rgba(0,0,0,0))]">
-              <span className="text-sm tracking-[0.3em] text-amber-100">S</span>
-            </div>
-            <div>
-              <h1 className="text-lg text-white md:text-xl">Sable</h1>
-              <p className="text-[10px] uppercase tracking-[0.3em] text-zinc-500">Agent Treasury</p>
-            </div>
-          </div>
+          <SableLogo />
 
           <div className="flex items-center gap-3">
             <Link
@@ -48,19 +40,19 @@ export default function LandingPage() {
           <GlassPanel className="p-8 lg:col-span-7 lg:p-10" highlight>
             <p className="text-[10px] uppercase tracking-[0.3em] text-amber-200/70">Sable</p>
             <h2 className="mt-4 text-4xl leading-tight text-white md:text-5xl">
-              Private programmable
+              Programmable
               <br />
-              money for AI agents.
+              agent treasury.
             </h2>
             <p className="mt-5 max-w-2xl text-sm leading-relaxed text-zinc-400 md:text-base">
-              Sable is a Solana agent treasury prototype with MagicBlock ER delegation hooks,
-              PER permission metadata, hierarchical treasuries, sealed-bid auctions, and an x402
-              demo path.
+              Sable is a Solana agent treasury prototype with direct Anchor vault flows,
+              MagicBlock ER delegation hooks, hierarchical treasuries, sealed-bid auctions, and an
+              x402 demo path.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-2">
               <Pill tone="amber">Hierarchical agent treasuries</Pill>
-              <Pill>ER / PER integration hooks</Pill>
+              <Pill>ER hooks available</Pill>
               <Pill>Sealed-bid task auctions</Pill>
               <Pill>x402 pay-per-request</Pill>
             </div>
@@ -88,7 +80,7 @@ export default function LandingPage() {
 
             <div className="mt-6 space-y-3">
               {[
-                'Create treasury with private balance PDAs',
+                'Create treasury with per-mint balance PDAs',
                 'Spawn agents with hierarchical policies',
                 'Fund agents and set spend limits',
                 'Post sealed-bid tasks to the marketplace',

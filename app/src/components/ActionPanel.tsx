@@ -15,6 +15,7 @@ import {
   Pill,
   TimelineItem,
   SectionHeader,
+  CopyableAddress,
   cn,
   truncateAddress,
 } from '@/components/ui/luxury';
@@ -77,7 +78,7 @@ function TreasuryConsole() {
   const [subTab, setSubTab] = useState<TreasurySubTab>('transfer');
 
   const subs: Array<{ id: TreasurySubTab; label: string }> = [
-    { id: 'transfer', label: 'Transfer' },
+    { id: 'transfer', label: 'Send' },
     { id: 'deposit', label: 'Deposit' },
     { id: 'withdraw', label: 'Withdraw' },
     { id: 'privacy', label: 'Privacy' },
@@ -174,9 +175,9 @@ function DepositForm() {
         fullWidth
         onClick={handleDeposit}
         isLoading={isLoading}
-        disabled={!mint.trim() || !amount.trim()}
+        disabled={!sdk || !mint.trim() || !amount.trim()}
       >
-        Authorize Deposit
+        Deposit to Vault
       </LuxuryButton>
     </div>
   );
@@ -394,7 +395,7 @@ function SendForm() {
       <SectionHeader
         eyebrow="Execution Console"
         title="Execute Transfer"
-        subtitle="Batch sends are routed by mode. In ER mode, delegated recipients use internal transfers while non-delegated recipients fall back to L1 vault settlement."
+        subtitle="Batch sends are routed by mode. In ER mode, delegated recipients use internal transfers while non-delegated recipients fall back to L1 vault settlement when configured."
         action={
           <div className="flex items-center gap-2">
             <Pill tone={routingMode === 'er' ? 'amber' : 'default'}>
@@ -455,7 +456,7 @@ function SendForm() {
           />
 
           <LuxuryInput
-            label={mode === 'simple' ? 'Amount per Recipient (9 decimals assumed in UI)' : 'Default Amount (optional)'}
+            label={mode === 'simple' ? 'Amount per Recipient' : 'Default Amount (optional)'}
             type="number"
             placeholder="0.00"
             value={defaultAmount}
@@ -513,9 +514,9 @@ function SendForm() {
         fullWidth
         onClick={handleSend}
         isLoading={isLoading}
-        disabled={!mint.trim() || !recipients.trim()}
+        disabled={!sdk || !mint.trim() || !recipients.trim()}
       >
-        {stage === 'done' ? 'Transfer Confirmed' : 'Authorize Transfer'}
+        {stage === 'done' ? 'Transfer Confirmed' : 'Send / Batch Send'}
       </LuxuryButton>
     </div>
   );
@@ -601,9 +602,9 @@ function WithdrawForm() {
         fullWidth
         onClick={handleWithdraw}
         isLoading={isLoading}
-        disabled={!mint.trim() || !amount.trim()}
+        disabled={!sdk || !mint.trim() || !amount.trim()}
       >
-        Authorize Withdrawal
+        Withdraw to Wallet
       </LuxuryButton>
     </div>
   );
@@ -620,6 +621,7 @@ function DelegateForm() {
   const [action, setAction] = useState<'delegate' | 'commit'>('delegate');
   const [isLoading, setIsLoading] = useState(false);
   const [stage, setStage] = useState<DelegateStage>('idle');
+  const l1SdkReady = !!(solanaSdk || sdk);
 
   useEffect(() => {
     if (stage !== 'done') return;
@@ -798,7 +800,7 @@ function DelegateForm() {
         fullWidth
         onClick={handleAction}
         isLoading={isLoading}
-        disabled={!mintList.trim()}
+        disabled={!l1SdkReady || !mintList.trim()}
         variant={action === 'delegate' ? 'primary' : 'secondary'}
       >
         {action === 'delegate' ? 'Authorize Delegation' : 'Authorize Commit / Undelegate'}
@@ -873,9 +875,9 @@ function AgentsTab() {
                     {agent.status}
                   </Pill>
                 </div>
-                <p className="mt-1 font-mono text-xs text-zinc-500">
-                  {truncateAddress(agent.address, 14, 14)}
-                </p>
+                <div className="mt-2">
+                  <CopyableAddress value={agent.address} head={12} tail={8} />
+                </div>
               </div>
             </div>
           ))}
@@ -953,9 +955,9 @@ function TasksTab() {
                     {task.state}
                   </Pill>
                 </div>
-                <p className="mt-1 font-mono text-xs text-zinc-500">
-                  {truncateAddress(task.address, 14, 14)}
-                </p>
+                <div className="mt-2">
+                  <CopyableAddress value={task.address} head={12} tail={8} />
+                </div>
               </div>
               <div className="text-left sm:text-right">
                 <p className="text-sm text-zinc-300">{task.budget} lamports</p>

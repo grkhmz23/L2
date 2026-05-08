@@ -6,10 +6,10 @@ import { PublicKey } from '@solana/web3.js';
 import { WSOL_MINT } from '@sable/sdk';
 import {
   GlassPanel,
+  CopyableAddress,
   LuxuryButton,
   LuxuryTextarea,
   Pill,
-  truncateAddress,
 } from '@/components/ui/luxury';
 import toast from 'react-hot-toast';
 
@@ -132,7 +132,7 @@ export function CompleteSetupModal({
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/75 backdrop-blur-xl" onClick={onClose} />
-      <GlassPanel className="relative w-full max-w-2xl p-6 md:p-8" highlight>
+      <GlassPanel className="relative max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto p-5 sable-subtle-scrollbar md:p-7" highlight>
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[10px] uppercase tracking-[0.3em] text-amber-200/70">
@@ -142,7 +142,7 @@ export function CompleteSetupModal({
               Add Treasury Assets
             </h3>
             <p className="mt-3 text-sm text-zinc-400">
-              wSOL is always included. Add up to 9 extra mint addresses to create balance PDAs in the same flow. When delegated to PER, your balances remain private — only you can read them.
+              wSOL is always included. Add up to 9 extra mint addresses to create balance PDAs in the same flow. Direct Anchor vault flow is available now; PER/private read paths require configured MagicBlock services.
             </p>
           </div>
           <LuxuryButton variant="ghost" className="px-3 py-2" onClick={onClose}>
@@ -151,16 +151,14 @@ export function CompleteSetupModal({
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <div className="rounded-2xl border border-white/8 bg-black/35 p-4">
+          <div className="rounded-lg border border-white/8 bg-black/35 p-4">
             <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Default Mint</p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <Pill tone="amber">wSOL</Pill>
-              <span className="font-mono text-xs text-zinc-400">
-                {truncateAddress(WSOL_MINT.toBase58(), 14, 10)}
-              </span>
+              <CopyableAddress value={WSOL_MINT.toBase58()} head={10} tail={8} />
             </div>
           </div>
-          <div className="rounded-2xl border border-white/8 bg-black/35 p-4">
+          <div className="rounded-lg border border-white/8 bg-black/35 p-4">
             <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Current Selection</p>
             <p className="mt-3 text-white">
               {1 + filteredMints.length} total asset PDA(s)
@@ -193,7 +191,7 @@ export function CompleteSetupModal({
         </div>
 
         {filteredMints.length > 0 ? (
-          <div className="mt-5 rounded-2xl border border-white/8 bg-black/35 p-4">
+          <div className="mt-5 rounded-lg border border-white/8 bg-black/35 p-4">
             <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">
               Preview ({filteredMints.length} additional)
             </p>
@@ -201,9 +199,9 @@ export function CompleteSetupModal({
               {filteredMints.slice(0, 6).map((mint) => (
                 <div
                   key={mint}
-                  className="rounded-xl border border-white/6 bg-white/[0.02] px-3 py-2 font-mono text-xs text-zinc-300"
+                  className="rounded-lg border border-white/6 bg-white/[0.02] px-3 py-2"
                 >
-                  {truncateAddress(mint, 16, 12)}
+                  <CopyableAddress value={mint} head={14} tail={10} className="w-full" />
                 </div>
               ))}
               {filteredMints.length > 6 ? (
@@ -225,8 +223,8 @@ export function CompleteSetupModal({
             disabled={filteredMints.length > 9 || duplicateCount > 0}
           >
             {filteredMints.length === 0
-              ? 'Complete Setup (wSOL only)'
-              : `Complete Setup (${1 + filteredMints.length} mints)`}
+              ? 'Add wSOL Balance'
+              : `Add ${1 + filteredMints.length} Assets`}
           </LuxuryButton>
         </div>
       </GlassPanel>

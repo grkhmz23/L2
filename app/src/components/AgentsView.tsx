@@ -8,6 +8,7 @@ import { BN } from '@coral-xyz/anchor';
 import type { AgentSnapshot, SpendPolicy } from '@sable/sdk';
 import {
   GlassPanel,
+  CopyableAddress,
   LuxuryButton,
   LuxuryInput,
   Pill,
@@ -338,7 +339,7 @@ function TreeNodeItem({
   return (
     <div
       className={cn(
-        'flex items-center gap-2 rounded-xl px-3 py-2.5 transition',
+        'flex min-w-0 items-center gap-2 rounded-lg px-3 py-2.5 transition',
         isSelected ? 'bg-white/[0.05] text-amber-100' : 'text-zinc-300 hover:bg-white/[0.03]'
       )}
       style={{ paddingLeft: `${12 + indent * 16}px` }}
@@ -357,9 +358,9 @@ function TreeNodeItem({
       ) : (
         <span className="w-3" />
       )}
-      <button type="button" onClick={onClick} className="flex-1 text-left">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium">{label}</span>
+      <button type="button" onClick={onClick} className="min-w-0 flex-1 text-left">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="min-w-0 truncate text-xs font-medium">{label}</span>
           <Pill
             tone={
               status === 'Active' || status === 'Root'
@@ -372,11 +373,11 @@ function TreeNodeItem({
             {status}
           </Pill>
         </div>
-        <div className="mt-0.5 flex items-center gap-2">
-          <span className="font-mono text-[10px] text-zinc-500">
+        <div className="mt-0.5 flex min-w-0 items-center gap-2">
+          <span className="min-w-0 truncate font-mono text-[10px] text-zinc-500">
             {truncateAddress(address, 10, 6)}
           </span>
-          {extra ? <span className="text-[10px] text-zinc-600">{extra}</span> : null}
+          {extra ? <span className="shrink-0 text-[10px] text-zinc-600">{extra}</span> : null}
         </div>
       </button>
     </div>
@@ -484,10 +485,18 @@ function AgentDetailPanel({
         />
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <InfoRow label="Address" value={truncateAddress(agent.pubkey.toBase58(), 16, 14)} mono />
-          <InfoRow label="Owner" value={truncateAddress(agent.owner.toBase58(), 16, 14)} mono />
-          <InfoRow label="Parent" value={truncateAddress(agent.parent.toBase58(), 16, 14)} mono />
-          <InfoRow label="Root User" value={truncateAddress(agent.rootUser.toBase58(), 16, 14)} mono />
+          <InfoRow label="Address">
+            <CopyableAddress value={agent.pubkey.toBase58()} head={12} tail={8} />
+          </InfoRow>
+          <InfoRow label="Owner">
+            <CopyableAddress value={agent.owner.toBase58()} head={12} tail={8} />
+          </InfoRow>
+          <InfoRow label="Parent">
+            <CopyableAddress value={agent.parent.toBase58()} head={12} tail={8} />
+          </InfoRow>
+          <InfoRow label="Root User">
+            <CopyableAddress value={agent.rootUser.toBase58()} head={12} tail={8} />
+          </InfoRow>
           <InfoRow label="Nonce" value={String(agent.nonce)} />
           <InfoRow label="Children" value={String(agent.childCount)} />
           <InfoRow label="Status">
@@ -605,12 +614,12 @@ function InfoRow({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-white/6 bg-white/[0.02] px-4 py-3">
+    <div className="min-w-0 rounded-lg border border-white/6 bg-white/[0.02] px-4 py-3">
       <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">{label}</p>
       {children ? (
         <div className="mt-1">{children}</div>
       ) : (
-        <p className={`mt-1 text-sm text-white ${mono ? 'font-mono' : ''}`}>{value}</p>
+        <p className={`mt-1 min-w-0 break-words text-sm text-white ${mono ? 'font-mono' : ''}`}>{value}</p>
       )}
     </div>
   );
@@ -695,7 +704,7 @@ function SpawnAgentModal({
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/75 backdrop-blur-xl" onClick={onClose} />
-      <GlassPanel className="relative w-full max-w-lg p-6 md:p-8" highlight>
+      <GlassPanel className="relative max-h-[calc(100vh-2rem)] w-full max-w-xl overflow-y-auto p-5 sable-subtle-scrollbar md:p-7" highlight>
         <SectionHeader
           eyebrow="Agent Lifecycle"
           title="Spawn Agent"
@@ -720,23 +729,24 @@ function SpawnAgentModal({
             maxLength={32}
           />
 
-          <div className="rounded-2xl border border-amber-300/15 bg-amber-300/5 p-4">
+          <div className="rounded-lg border border-amber-300/15 bg-amber-300/5 p-4">
             <p className="text-[10px] uppercase tracking-[0.2em] text-amber-200/70">Keypair</p>
             <p className="mt-2 text-xs text-amber-100/80">
               This keypair controls the agent&apos;s spending. Store securely.
             </p>
             {keypair ? (
               <div className="mt-3 space-y-2">
-                <p className="font-mono text-xs text-zinc-300">
-                  Pubkey: {truncateAddress(keypair.publicKey.toBase58(), 16, 14)}
-                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-zinc-400">Pubkey:</span>
+                  <CopyableAddress value={keypair.publicKey.toBase58()} head={12} tail={8} />
+                </div>
                 <div className="flex gap-2">
                   <LuxuryButton
                     variant="secondary"
                     className="px-3 py-2 text-[10px]"
                     onClick={downloadKeypair}
                   >
-                    {downloaded ? 'Downloaded ✓' : 'Download Keypair'}
+                    {downloaded ? 'Downloaded' : 'Download Keypair'}
                   </LuxuryButton>
                   <LuxuryButton
                     variant="ghost"

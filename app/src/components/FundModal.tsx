@@ -68,7 +68,7 @@ export function FundModal({ isOpen, onClose, onComplete }: FundModalProps) {
         throw new Error('Invalid amount');
       }
 
-      // Build deposit tx via Private Payments API
+      // Build the optional funding payload through the configured payments endpoint.
       const { tx, payload } = await sdk.payments.buildDepositPayload({
         from: publicKey,
         amount: new BN(lamports),
@@ -98,11 +98,11 @@ export function FundModal({ isOpen, onClose, onComplete }: FundModalProps) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/75 backdrop-blur-xl" onClick={onClose} />
-      <GlassPanel className="relative w-full max-w-lg p-6 md:p-8" highlight>
+      <GlassPanel className="relative max-h-[calc(100vh-2rem)] w-full max-w-xl overflow-y-auto p-5 sable-subtle-scrollbar md:p-7" highlight>
         <SectionHeader
           eyebrow="Treasury Funding"
-          title="Fund with USDC"
-          subtitle="Optional Private Payments API path. Requires a configured endpoint; use direct test-mint deposits for local demos."
+          title="Optional USDC Funding"
+          subtitle="Uses the optional payments endpoint when configured. For local demos, the direct Anchor deposit form is the primary path."
           action={
             <LuxuryButton variant="ghost" className="px-3 py-2" onClick={onClose}>
               Close
@@ -112,7 +112,7 @@ export function FundModal({ isOpen, onClose, onComplete }: FundModalProps) {
 
         <div className="mt-6 space-y-4">
           {amlStatus === 'rejected' ? (
-            <div className="rounded-2xl border border-rose-300/20 bg-rose-500/10 p-4">
+            <div className="rounded-lg border border-rose-300/20 bg-rose-500/10 p-4">
               <div className="flex items-center gap-2">
                 <Pill tone="red">AML Rejected</Pill>
               </div>
@@ -135,7 +135,7 @@ export function FundModal({ isOpen, onClose, onComplete }: FundModalProps) {
             className="text-lg"
           />
 
-          <div className="rounded-2xl border border-white/8 bg-black/35 p-4">
+          <div className="rounded-lg border border-white/8 bg-black/35 p-4">
             <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Compliance</p>
             <div className="mt-3 flex items-center gap-3">
               <Pill tone={amlStatus === 'ok' ? 'green' : amlStatus === 'rejected' ? 'red' : 'default'}>
@@ -157,7 +157,7 @@ export function FundModal({ isOpen, onClose, onComplete }: FundModalProps) {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/8 bg-black/35 p-4">
+          <div className="rounded-lg border border-white/8 bg-black/35 p-4">
             <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Summary</p>
             <div className="mt-3 space-y-2">
               <div className="flex justify-between text-sm">
@@ -181,7 +181,7 @@ export function FundModal({ isOpen, onClose, onComplete }: FundModalProps) {
             isLoading={isLoading}
             disabled={!amount.trim() || amlStatus === 'rejected'}
           >
-            Authorize Deposit
+            Continue
           </LuxuryButton>
         </div>
       </GlassPanel>

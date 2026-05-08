@@ -8,11 +8,11 @@ import { WSOL_MINT } from '@sable/sdk';
 import { env } from '@/utils/env';
 import {
   GlassPanel,
+  CopyableAddress,
   LuxuryButton,
   LuxuryInput,
   Pill,
   SectionHeader,
-  truncateAddress,
 } from '@/components/ui/luxury';
 import toast from 'react-hot-toast';
 
@@ -66,7 +66,7 @@ export function BalanceList() {
         });
       }
 
-      // For delegated balances, try to read via session if available
+      // For delegated balances, try to read via session if available.
       if (sdk.session && !sdk.session.isExpired) {
         for (const row of baseList) {
           if (row.isDelegated && row.pubkey) {
@@ -81,7 +81,7 @@ export function BalanceList() {
         }
       }
 
-      // Mark any remaining delegated rows as private
+      // Mark any remaining delegated rows as requiring PER/session reads.
       baseList.forEach((row) => {
         if (row.isDelegated && row.isPrivate === undefined) row.isPrivate = true;
       });
@@ -135,7 +135,7 @@ export function BalanceList() {
     setIsUnlocking(true);
     try {
       await sdk.openSession(perHttpUrl, 3600);
-      toast.success('Session opened — private balances unlocked');
+      toast.success('PER session opened for delegated balance reads');
       await fetchBalances();
     } catch (error: any) {
       console.error('Session open error:', error);
@@ -165,7 +165,7 @@ export function BalanceList() {
       <SectionHeader
         eyebrow="Treasury"
         title="Your Treasury"
-        subtitle="Per-mint balance PDAs under your UserState. Balances are private when delegated to PER."
+        subtitle="Per-mint balance PDAs under your UserState. Delegated balances require a configured PER/session read path."
         action={
           <LuxuryButton
             variant="secondary"
@@ -186,7 +186,7 @@ export function BalanceList() {
           tone={balances.some((b) => b.isWsol) ? 'green' : 'amber'}
         />
         <SummaryChip
-          label="Private Balances"
+          label="Delegated Accounts"
           value={String(balances.filter((b) => b.isDelegated).length)}
           tone="amber"
         />
@@ -195,7 +195,7 @@ export function BalanceList() {
       <div className="mt-6 rounded-2xl border border-white/8 bg-black/30 p-4">
         <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
           <LuxuryInput
-            label="Add Mint"
+            label="Add Asset"
             placeholder="Enter mint address"
             value={newMint}
             onChange={(e) => setNewMint(e.target.value)}
@@ -208,7 +208,7 @@ export function BalanceList() {
               disabled={!newMint.trim()}
               className="sm:min-w-[180px]"
             >
-              Add Mint
+              Add Asset
             </LuxuryButton>
           </div>
         </div>
@@ -216,7 +216,7 @@ export function BalanceList() {
 
       <div className="mt-6">
         {balances.length === 0 ? (
-          <div className="rounded-2xl border border-white/8 bg-black/30 p-5">
+          <div className="rounded-lg border border-white/8 bg-black/30 p-5">
             <p className="text-sm text-zinc-300">No treasury balances found yet.</p>
             <p className="mt-2 text-xs text-zinc-500">
               Create your treasury to initialize the default wSOL balance PDA, then add additional mints as needed.
@@ -227,14 +227,12 @@ export function BalanceList() {
             {balances.map((balance) => (
               <div
                 key={balance.mint.toBase58()}
-                className="group rounded-2xl border border-white/6 bg-white/[0.02] p-4 transition hover:border-white/12 hover:bg-white/[0.035]"
+                className="group rounded-lg border border-white/6 bg-white/[0.02] p-4 transition hover:border-white/12 hover:bg-white/[0.035]"
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-mono text-sm text-zinc-100">
-                        {truncateAddress(balance.mint.toBase58(), 10, 10)}
-                      </p>
+                      <CopyableAddress value={balance.mint.toBase58()} head={10} tail={8} />
                       {balance.isWsol ? <Pill tone="amber">wSOL Default</Pill> : null}
                       {typeof balance.isDelegated === 'boolean' ? (
                         <Pill tone={balance.isDelegated ? 'green' : 'default'}>
@@ -256,8 +254,7 @@ export function BalanceList() {
                         disabled={isUnlocking}
                         className="inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/5 px-3 py-1.5 text-sm text-amber-100 transition hover:bg-amber-300/10 disabled:opacity-50"
                       >
-                        <span>🔒</span>
-                        <span>Tap to unlock</span>
+                        <span>Open PER session</span>
                       </button>
                     ) : (
                       <>
@@ -295,7 +292,7 @@ function SummaryChip({
       : 'border-white/8 bg-white/[0.02]';
 
   return (
-    <div className={`rounded-2xl border p-4 ${toneClasses}`}>
+    <div className={`rounded-lg border p-4 ${toneClasses}`}>
       <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">{label}</p>
       <p className="mt-2 text-lg text-white">{value}</p>
     </div>

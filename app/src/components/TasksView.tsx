@@ -9,6 +9,7 @@ import type { TaskSnapshot, BidSnapshot, AgentSnapshot, TaskState } from '@sable
 import { sha256, computeCommitHash } from '@sable/common';
 import {
   GlassPanel,
+  CopyableAddress,
   LuxuryButton,
   LuxuryInput,
   LuxuryTextarea,
@@ -207,9 +208,9 @@ export function TasksView() {
                       </Pill>
                       {task.myBid ? <Pill>Bid Placed</Pill> : null}
                     </div>
-                    <p className="mt-1 font-mono text-xs text-zinc-500">
-                      {truncateAddress(task.pubkey.toBase58(), 14, 14)}
-                    </p>
+                    <div className="mt-2">
+                      <CopyableAddress value={task.pubkey.toBase58()} head={12} tail={8} />
+                    </div>
                   </div>
                   <div className="text-left sm:text-right">
                     <p className="text-sm text-zinc-300">Budget: {task.budget.toString()}</p>
@@ -312,7 +313,7 @@ function CreateTaskModal({
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/75 backdrop-blur-xl" onClick={onClose} />
-      <GlassPanel className="relative w-full max-w-lg p-6 md:p-8" highlight>
+      <GlassPanel className="relative max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto p-5 sable-subtle-scrollbar md:p-7" highlight>
         <SectionHeader
           eyebrow="Auction"
           title="Create Task"
@@ -600,7 +601,7 @@ function TaskDetailModal({
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/75 backdrop-blur-xl" onClick={onClose} />
-      <GlassPanel className="relative max-h-[90vh] w-full max-w-2xl overflow-auto p-6 md:p-8" highlight>
+      <GlassPanel className="relative max-h-[calc(100vh-2rem)] w-full max-w-3xl overflow-y-auto p-5 sable-subtle-scrollbar md:p-7" highlight>
         <SectionHeader
           eyebrow="Task Detail"
           title={`Task #${task.taskId.toString()}`}
@@ -614,8 +615,12 @@ function TaskDetailModal({
         <div className="mt-5 space-y-4">
           {/* Info grid */}
           <div className="grid gap-3 sm:grid-cols-2">
-            <InfoRow label="Poster" value={truncateAddress(task.poster.toBase58(), 14, 14)} />
-            <InfoRow label="Mint" value={truncateAddress(task.mint.toBase58(), 14, 14)} />
+            <InfoRow label="Poster">
+              <CopyableAddress value={task.poster.toBase58()} head={12} tail={8} />
+            </InfoRow>
+            <InfoRow label="Mint">
+              <CopyableAddress value={task.mint.toBase58()} head={12} tail={8} />
+            </InfoRow>
             <InfoRow label="Budget" value={task.budget.toString()} />
             <InfoRow label="Min Deposit" value={task.minDeposit.toString()} />
             <InfoRow label="State">
@@ -652,26 +657,29 @@ function TaskDetailModal({
             <p className="mt-2 font-mono text-xs text-zinc-300 break-all">{specHashHex}</p>
           </div>
 
-          {/* Privacy Proof */}
+          {/* Bid commitment */}
           {commitTxSig ? (
             <div className="rounded-2xl border border-emerald-300/15 bg-emerald-300/5 p-4">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-200/70">Privacy Proof</p>
+              <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-200/70">Bid Commitment</p>
               <p className="mt-2 text-sm text-zinc-300">
                 Your bid amount was sealed with a keccak256 hash and submitted on-chain.
               </p>
+              <div className="mt-2">
+                <CopyableAddress value={commitTxSig} label="Copy commit transaction" head={14} tail={10} />
+              </div>
               <a
                 href={`https://explorer.solana.com/tx/${commitTxSig}?cluster=devnet`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-2 inline-block font-mono text-xs text-emerald-300 hover:underline"
+                className="mt-2 inline-block text-xs text-emerald-300 hover:underline"
               >
-                View commit tx: {truncateAddress(commitTxSig, 16, 14)}
+                Open in explorer
               </a>
               <p className="mt-2 font-mono text-[10px] text-zinc-500 break-all">
                 Commit hash: {commitHash ? Buffer.from(commitHash).toString('hex') : '—'}
               </p>
               <p className="mt-1 text-xs text-zinc-500">
-                The amount is hidden as a hash — unreadable on L1 until reveal.
+                The bid amount is represented by a commitment hash until reveal.
               </p>
             </div>
           ) : null}
@@ -741,13 +749,13 @@ function TaskDetailModal({
                   </LuxuryButton>
                 ) : (
                   <div className="rounded-2xl border border-amber-300/20 bg-amber-300/5 p-4">
-                    <p className="text-sm text-amber-100">🔒 Download your nonce before confirming</p>
+                    <p className="text-sm text-amber-100">Download your nonce before confirming</p>
                     <p className="mt-1 font-mono text-xs text-zinc-400">
                       Nonce: {generatedNonce.toString()}
                     </p>
                     <div className="mt-3 flex gap-2">
                       <LuxuryButton variant="secondary" className="px-3 py-2 text-[10px]" onClick={downloadNonce}>
-                        {nonceDownloaded ? 'Downloaded ✓' : 'Download Nonce'}
+                        {nonceDownloaded ? 'Downloaded' : 'Download Nonce'}
                       </LuxuryButton>
                       <LuxuryButton
                         onClick={handleCommitBid}
@@ -810,7 +818,7 @@ function TaskDetailModal({
             <div className="rounded-2xl border border-emerald-300/15 bg-emerald-300/5 p-4">
               <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-200/70">Result</p>
               <p className="mt-2 text-sm text-white">
-                Winner: {truncateAddress(task.winningBidder.toBase58(), 14, 14)}
+                Winner: <CopyableAddress value={task.winningBidder.toBase58()} head={12} tail={8} />
               </p>
               <p className="mt-1 text-sm text-zinc-300">Winning bid: {task.winningBid.toString()}</p>
             </div>
@@ -823,9 +831,9 @@ function TaskDetailModal({
 
 function InfoRow({ label, value, children }: { label: string; value?: string; children?: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-white/6 bg-white/[0.02] px-4 py-3">
+    <div className="min-w-0 rounded-lg border border-white/6 bg-white/[0.02] px-4 py-3">
       <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">{label}</p>
-      {children ? <div className="mt-1">{children}</div> : <p className="mt-1 text-sm text-white">{value}</p>}
+      {children ? <div className="mt-1">{children}</div> : <p className="mt-1 break-words text-sm text-white">{value}</p>}
     </div>
   );
 }

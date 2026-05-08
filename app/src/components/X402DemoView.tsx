@@ -8,6 +8,7 @@ import { X402Client } from '@sable/x402-client';
 import type { AgentSnapshot } from '@sable/sdk';
 import {
   GlassPanel,
+  CopyableAddress,
   LuxuryButton,
   LuxuryInput,
   Pill,
@@ -146,7 +147,7 @@ export function X402DemoView() {
 
         if (!options?.silent) {
           addLog(`← 200 OK`, 'success', JSON.stringify(data));
-          addLog(`Agent balance updated (private)`, 'action', `Call took ${latency}ms`);
+          addLog('Agent balance update requested', 'action', `Call took ${latency}ms`);
           setWeatherResult(data);
           fetchAgentBalance();
         }
@@ -232,8 +233,8 @@ export function X402DemoView() {
     <div className="space-y-6">
       <SectionHeader
         eyebrow="Payments"
-        title="x402 Live Demo"
-        subtitle="Watch an agent pay per API call in real time via the x402 protocol."
+        title="x402 Demo"
+        subtitle="Exercise the local x402 demo endpoint with an agent payer. This requires the demo API route and configured wallet state."
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -267,10 +268,10 @@ export function X402DemoView() {
               <div className="rounded-2xl border border-emerald-300/15 bg-emerald-300/5 p-4">
                 <p className="text-sm text-emerald-100">Weather for {weatherResult.city}</p>
                 <div className="mt-2 grid grid-cols-2 gap-2 text-sm text-zinc-300">
-                  <p>🌡️ Temp: {weatherResult.temp}°C</p>
-                  <p>💨 Wind: {weatherResult.wind} km/h</p>
-                  <p>☁️ Condition: {weatherResult.condition}</p>
-                  <p>💧 Humidity: {weatherResult.humidity}%</p>
+                  <p>Temp: {weatherResult.temp}C</p>
+                  <p>Wind: {weatherResult.wind} km/h</p>
+                  <p>Condition: {weatherResult.condition}</p>
+                  <p>Humidity: {weatherResult.humidity}%</p>
                 </div>
               </div>
             ) : null}
@@ -348,7 +349,15 @@ export function X402DemoView() {
                   ))}
                 </select>
               </div>
-              <div className="rounded-xl border border-white/6 bg-white/[0.02] px-4 py-3">
+              {selectedAgent ? (
+                <div className="rounded-lg border border-white/6 bg-white/[0.02] px-4 py-3">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Agent Address</p>
+                  <div className="mt-2">
+                    <CopyableAddress value={selectedAgent.pubkey.toBase58()} head={12} tail={8} />
+                  </div>
+                </div>
+              ) : null}
+              <div className="rounded-lg border border-white/6 bg-white/[0.02] px-4 py-3">
                 <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">USDC Balance</p>
                 <p className="mt-1 font-mono text-sm text-white">{agentBalance}</p>
               </div>

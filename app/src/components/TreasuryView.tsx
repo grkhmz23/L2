@@ -7,14 +7,14 @@ import { PublicKey } from '@solana/web3.js';
 import { env } from '@/utils/env';
 import { BalanceList } from '@/components/BalanceList';
 import { ActivityFeed } from '@/components/ActivityFeed';
+import { ActionPanel } from '@/components/ActionPanel';
 import { FundModal } from '@/components/FundModal';
 import { UserStatus } from '@/components/UserStatus';
 import {
   GlassPanel,
+  CopyableAddress,
   LuxuryButton,
   Pill,
-  SectionHeader,
-  truncateAddress,
 } from '@/components/ui/luxury';
 import toast from 'react-hot-toast';
 
@@ -100,7 +100,7 @@ export function TreasuryView() {
         throw new Error('Timed out waiting for delegation status change.');
       }
 
-      toast.success('Delegation successful — private mode active');
+      toast.success(`ER delegation confirmed: ${result.signature}`);
       setIsDelegated(true);
 
       // Auto-open session after delegation
@@ -111,7 +111,7 @@ export function TreasuryView() {
           toast.success('PER session auto-opened');
         } catch (sessionErr: any) {
           console.warn('Auto session open failed:', sessionErr);
-          toast('Delegation complete. Tap 🔒 to unlock private balances.');
+          toast('Delegation complete. Open a PER session to read delegated balances.');
         }
       }
     } catch (error: any) {
@@ -183,31 +183,35 @@ export function TreasuryView() {
     <div className="space-y-6">
       {/* Header */}
       <GlassPanel className="p-6 md:p-7">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
+        <div className="flex min-w-0 flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-[10px] uppercase tracking-[0.3em] text-zinc-500">Treasury Overview</p>
               {isDelegated ? (
-                <Pill tone="green">🔒 Private Mode</Pill>
+                <Pill tone="green">ER Delegated</Pill>
               ) : (
                 <Pill>L1 Mode</Pill>
               )}
             </div>
-            <h1 className="mt-2 text-2xl text-white md:text-3xl">
-              {publicKey ? truncateAddress(publicKey.toBase58(), 8, 6) : '—'}
-            </h1>
+            <div className="mt-3">
+              {publicKey ? (
+                <CopyableAddress value={publicKey.toBase58()} head={12} tail={8} className="max-w-full" />
+              ) : (
+                <h1 className="text-2xl text-white md:text-3xl">Treasury</h1>
+              )}
+            </div>
             <p className="mt-1 text-sm text-zinc-400">
               Total value: <span className="font-mono text-zinc-200">{totalValue}</span> raw lamports
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 md:justify-end">
             <LuxuryButton
               variant="secondary"
               onClick={() => setShowFundModal(true)}
               className="px-4 py-2"
             >
-              Fund with USDC
+              Optional USDC Funding
             </LuxuryButton>
             {isDelegated ? (
               <LuxuryButton
@@ -216,7 +220,7 @@ export function TreasuryView() {
                 isLoading={isLoadingDelegate}
                 className="px-4 py-2"
               >
-                Commit & Undelegate
+                Commit / Undelegate
               </LuxuryButton>
             ) : (
               <LuxuryButton
@@ -224,7 +228,7 @@ export function TreasuryView() {
                 isLoading={isLoadingDelegate}
                 className="px-4 py-2"
               >
-                Delegate to Private Mode
+                Delegate to ER
               </LuxuryButton>
             )}
           </div>
@@ -232,13 +236,14 @@ export function TreasuryView() {
       </GlassPanel>
 
       {/* Main grid */}
-      <div className="grid flex-1 gap-6 lg:grid-cols-12">
-        <div className="space-y-6 lg:col-span-4">
+      <div className="grid flex-1 gap-6 xl:grid-cols-12">
+        <div className="space-y-6 xl:col-span-5 2xl:col-span-4">
           <UserStatus />
           <BalanceList />
         </div>
 
-        <div className="space-y-6 lg:col-span-8">
+        <div className="space-y-6 xl:col-span-7 2xl:col-span-8">
+          <ActionPanel />
           <ActivityFeed />
         </div>
       </div>

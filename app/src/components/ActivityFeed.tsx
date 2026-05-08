@@ -7,9 +7,9 @@ import { PublicKey } from '@solana/web3.js';
 import { env } from '@/utils/env';
 import {
   GlassPanel,
+  CopyableAddress,
   Pill,
   SectionHeader,
-  truncateAddress,
 } from '@/components/ui/luxury';
 
 interface ActivityItem {
@@ -186,7 +186,7 @@ export function ActivityFeed() {
 
       <div className="mt-6 space-y-2">
         {activities.length === 0 ? (
-          <div className="rounded-2xl border border-white/8 bg-black/30 p-5">
+          <div className="rounded-lg border border-white/8 bg-black/30 p-5">
             <p className="text-sm text-zinc-300">No activity yet.</p>
             <p className="mt-2 text-xs text-zinc-500">
               Transactions will appear here once you start using your treasury.
@@ -199,7 +199,7 @@ export function ActivityFeed() {
               href={explorerUrl(item.signature)}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex flex-col gap-1 rounded-xl border border-white/6 bg-white/[0.02] p-4 transition hover:border-white/12 hover:bg-white/[0.035] sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-3 rounded-lg border border-white/6 bg-white/[0.02] p-4 transition hover:border-white/12 hover:bg-white/[0.035] sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="flex items-center gap-3">
                 <span
@@ -213,9 +213,9 @@ export function ActivityFeed() {
                 />
                 <div>
                   <p className="text-sm text-white">{item.description}</p>
-                  <p className="mt-0.5 font-mono text-[10px] text-zinc-500">
-                    {truncateAddress(item.signature, 16, 12)}
-                  </p>
+                  <div className="mt-2">
+                    <CopyableAddress value={item.signature} label="Copy signature" head={14} tail={10} />
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-2 sm:text-right">
