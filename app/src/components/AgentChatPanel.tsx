@@ -126,7 +126,9 @@ export function AgentChatPanel({ compact = false }: { compact?: boolean }) {
       setProposal(nextProposal);
       addMessage(
         'assistant',
-        `${nextProposal.summary}\nPlanner: ${response.provider}${response.usedFallback ? ' fallback' : ''}.\n${nextProposal.estimatedNextStep}`
+        response.plan.requiresTransaction
+          ? `${nextProposal.summary}\n${nextProposal.estimatedNextStep}`
+          : nextProposal.summary
       );
     } catch (error: any) {
       addMessage('assistant', error.message || 'I could not prepare that action.');
