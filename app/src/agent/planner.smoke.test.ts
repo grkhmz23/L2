@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { deterministicPlan } from './planner';
 import { buildAgentProposal } from './guards';
+import { buildOutOfScopePlan, classifySableScope } from './scope';
 import { executeAgentPlan } from './tools';
 import type { AgentToolContext } from './types';
 
@@ -33,6 +34,15 @@ describe('agent planner and guards', () => {
     expect(deterministicPlan('withdraw 5 usdc', context).actionType).toBe('WITHDRAW');
     expect(deterministicPlan('delegate to magicblock', context).actionType).toBe('DELEGATE');
     expect(deterministicPlan('commit and undelegate', context).actionType).toBe('COMMIT_UNDELEGATE');
+  });
+
+  it('classifies out-of-scope and ambiguous requests before planning', () => {
+    expect(classifySableScope('What is Bitcoin?', context).domain).toBe('out_of_scope');
+    expect(classifySableScope('Tell me a joke', context).domain).toBe('out_of_scope');
+    expect(classifySableScope('What token should I buy?', context).domain).toBe('out_of_scope');
+    expect(classifySableScope('help me', context).domain).toBe('ambiguous');
+    expect(classifySableScope('Deposit 1 USDC', context).domain).toBe('sable_protocol');
+    expect(classifySableScope(`Send 0.1 USDC to ${recipient}`, context).domain).toBe('sable_protocol');
   });
 
   it('blocks invalid amount and address proposals', () => {
@@ -71,5 +81,31 @@ describe('agent planner and guards', () => {
         userApproved: false,
       })
     ).rejects.toThrow('userApproved=true');
+  });
+
+  it('tool registry rejects out-of-scope and unknown plans', async () => {
+    const outOfScopeProposal = buildAgentProposal(buildOutOfScopePlan('What is Bitcoin?'), context);
+    await expect(
+      executeAgentPlan({
+        proposal: outOfScopeProposal,
+        context,
+        sdk: {} as any,
+        solanaSdk: null,
+        solanaConnection: {} as any,
+        userApproved: true,
+      })
+    ).rejects.toThrow('only Sable protocol');
+
+    const unknownProposal = buildAgentProposal(deterministicPlan('sable something unknown', context), context);
+    await expect(
+      executeAgentPlan({
+        proposal: unknownProposal,
+        context,
+        sdk: {} as any,
+        solanaSdk: null,
+        solanaConnection: {} as any,
+        userApproved: true,
+      })
+    ).rejects.toThrow('cannot execute');
   });
 });

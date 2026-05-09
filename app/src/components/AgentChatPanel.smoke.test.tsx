@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AgentChatPanel, AgentProposalCard } from './AgentChatPanel';
 import type { AgentProposal } from '@/agent/types';
 
@@ -36,6 +36,7 @@ const proposal: AgentProposal = {
   plan: {
     actionType: 'DEPOSIT',
     intent: { actionType: 'DEPOSIT', confidence: 0.9, reason: 'test' },
+    domain: 'sable_protocol',
     summary: 'Deposit 1 USDC to the vault',
     amount: '1',
     mint: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU',
@@ -75,5 +76,23 @@ describe('agent chat UI', () => {
     render(React.createElement(Harness));
     fireEvent.click(screen.getByText('Reject'));
     expect(screen.getByText('No proposal')).toBeInTheDocument();
+  });
+
+  it('out-of-scope message renders refusal and no proposal card', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('should not be called'));
+
+    render(React.createElement(AgentChatPanel));
+    fireEvent.change(screen.getByPlaceholderText('Send 0.1 USDC to 7abc...'), {
+      target: { value: 'What is Bitcoin?' },
+    });
+    fireEvent.click(screen.getByText('Prepare Proposal'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/I can only help with Sable treasury actions inside this app/)).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Approve & Sign')).not.toBeInTheDocument();
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    fetchSpy.mockRestore();
   });
 });

@@ -12,11 +12,15 @@ export type AgentActionType =
   | 'WITHDRAW'
   | 'EXPLAIN_BALANCES'
   | 'SHOW_SETTINGS'
+  | 'OUT_OF_SCOPE'
+  | 'CLARIFY_SABLE_ACTION'
   | 'UNKNOWN';
 
 export type AgentRiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'BLOCKED';
 
 export type AgentProvider = 'deepseek' | 'gemini' | 'groq' | 'none' | 'deterministic';
+
+export type AgentDomain = 'sable_protocol' | 'out_of_scope' | 'ambiguous';
 
 export interface AgentMessage {
   id: string;
@@ -38,6 +42,7 @@ export interface AgentTransferRecipient {
 
 export interface AgentActionPlan {
   actionType: AgentActionType;
+  domain: AgentDomain;
   intent: AgentIntent;
   summary: string;
   amount?: string;
@@ -109,4 +114,9 @@ export interface AgentProviderResponse {
   model: string;
   plan: AgentActionPlan;
   usedFallback: boolean;
+}
+
+export interface AgentScopeResult {
+  domain: AgentDomain;
+  reason: string;
 }

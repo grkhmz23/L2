@@ -27,6 +27,12 @@ export async function executeAgentPlan({
   if (!userApproved) {
     throw new Error('Safety guard: userApproved=true is required before execution.');
   }
+  if (proposal.plan.domain !== 'sable_protocol') {
+    throw new Error('Safety guard: only Sable protocol action plans can execute.');
+  }
+  if (['OUT_OF_SCOPE', 'CLARIFY_SABLE_ACTION', 'UNKNOWN'].includes(proposal.plan.actionType)) {
+    throw new Error('Safety guard: this action type cannot execute.');
+  }
   if (proposal.blocked) {
     throw new Error(proposal.prerequisites[0] || 'Proposal is blocked.');
   }

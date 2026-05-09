@@ -6,6 +6,12 @@ import { useWalletContext } from '@/contexts/WalletContext';
 import { buildAgentToolContext } from '@/agent/context';
 import { deterministicPlan } from '@/agent/planner';
 import { buildAgentProposal } from '@/agent/guards';
+import {
+  SABLE_SCOPE_CLARIFICATION,
+  SABLE_SCOPE_REFUSAL,
+  SABLE_SUGGESTED_COMMANDS,
+  classifySableScope,
+} from '@/agent/scope';
 import { executeAgentPlan } from '@/agent/tools';
 import type { AgentMessage, AgentProposal, AgentProviderResponse, AgentToolContext } from '@/agent/types';
 import {
@@ -69,6 +75,18 @@ export function AgentChatPanel({ compact = false }: { compact?: boolean }) {
       });
       setContext(builtContext);
 
+      const scope = classifySableScope(trimmed, builtContext);
+      if (scope.domain === 'out_of_scope') {
+        setProposal(null);
+        addMessage('assistant', `${SABLE_SCOPE_REFUSAL}\n\nTry: ${SABLE_SUGGESTED_COMMANDS.join(', ')}`);
+        return;
+      }
+      if (scope.domain === 'ambiguous') {
+        setProposal(null);
+        addMessage('assistant', SABLE_SCOPE_CLARIFICATION);
+        return;
+      }
+
       let response: AgentProviderResponse;
       try {
         const apiResponse = await fetch('/api/agent', {
@@ -85,6 +103,17 @@ export function AgentChatPanel({ compact = false }: { compact?: boolean }) {
           plan: deterministicPlan(trimmed, builtContext),
           usedFallback: true,
         };
+      }
+
+      if (response.plan.domain !== 'sable_protocol') {
+        setProposal(null);
+        addMessage(
+          'assistant',
+          response.plan.actionType === 'CLARIFY_SABLE_ACTION'
+            ? SABLE_SCOPE_CLARIFICATION
+            : `${SABLE_SCOPE_REFUSAL}\n\nTry: ${SABLE_SUGGESTED_COMMANDS.join(', ')}`
+        );
+        return;
       }
 
       const nextProposal = buildAgentProposal(response.plan, builtContext);

@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { deterministicPlan, normalizeAgentPlan } from '@/agent/planner';
+import {
+  buildClarificationPlan,
+  buildOutOfScopePlan,
+  classifySableScope,
+} from '@/agent/scope';
 import type { AgentProvider, AgentToolContext } from '@/agent/types';
 
 export const runtime = 'nodejs';
@@ -19,11 +24,14 @@ const actionTypeSchema = z.enum([
   'WITHDRAW',
   'EXPLAIN_BALANCES',
   'SHOW_SETTINGS',
+  'OUT_OF_SCOPE',
+  'CLARIFY_SABLE_ACTION',
   'UNKNOWN',
 ]);
 
 const planSchema = z.object({
   actionType: actionTypeSchema,
+  domain: z.enum(['sable_protocol', 'out_of_scope', 'ambiguous']).optional(),
   summary: z.string().min(1),
   amount: z.string().optional(),
   mint: z.string().optional(),
@@ -50,6 +58,28 @@ export async function POST(request: Request) {
 
   const provider = providerFromEnv();
   const model = process.env.SABLE_AGENT_LLM_MODEL || defaultModel(provider);
+  const scope = classifySableScope(parsed.data.message, parsed.data.context);
+
+  if (scope.domain === 'out_of_scope') {
+    return NextResponse.json({
+      provider: 'deterministic',
+      model: 'scope-classifier',
+      plan: buildOutOfScopePlan(parsed.data.message),
+      usedFallback: true,
+      scope,
+    });
+  }
+
+  if (scope.domain === 'ambiguous') {
+    return NextResponse.json({
+      provider: 'deterministic',
+      model: 'scope-classifier',
+      plan: buildClarificationPlan(parsed.data.message),
+      usedFallback: true,
+      scope,
+    });
+  }
+
   const deterministic = deterministicPlan(parsed.data.message, parsed.data.context);
 
   if (provider === 'none' || !process.env.SABLE_AGENT_LLM_API_KEY) {
@@ -103,9 +133,16 @@ async function callProvider(params: {
 }) {
   const prompt = [
     'You are Sable Agent Chat. Return strict JSON only.',
+    'You are Sable Agent, not a general assistant.',
+    'Only return structured JSON for Sable protocol actions.',
+    'If request is out of scope, return { "actionType": "OUT_OF_SCOPE", "domain": "out_of_scope", "summary": "I can only help with Sable treasury actions inside this app: setup, assets, deposits, transfers, delegation, commit/undelegate, withdrawals, and settings." }.',
+    'Do not answer general knowledge questions.',
+    'Do not provide investment advice.',
+    'Do not discuss unrelated topics.',
+    'Do not output markdown chat unless schema requires a short user-facing message.',
     'Never claim you can sign, hold keys, or execute without wallet approval.',
     'Choose one supported action and fill only fields present or confidently inferred.',
-    'Supported actions: CREATE_TREASURY, COMPLETE_SETUP, ADD_WS0L_BALANCE, ADD_MINT, DEPOSIT, INTERNAL_TRANSFER, BATCH_TRANSFER, EXTERNAL_SEND, DELEGATE, COMMIT_UNDELEGATE, WITHDRAW, EXPLAIN_BALANCES, SHOW_SETTINGS, UNKNOWN.',
+    'Supported actions: CREATE_TREASURY, COMPLETE_SETUP, ADD_WS0L_BALANCE, ADD_MINT, DEPOSIT, INTERNAL_TRANSFER, BATCH_TRANSFER, EXTERNAL_SEND, DELEGATE, COMMIT_UNDELEGATE, WITHDRAW, EXPLAIN_BALANCES, SHOW_SETTINGS, OUT_OF_SCOPE, CLARIFY_SABLE_ACTION, UNKNOWN.',
     `Safe public context: ${JSON.stringify(params.context)}`,
     `Deterministic draft: ${JSON.stringify(params.deterministic)}`,
     `User message: ${params.message}`,

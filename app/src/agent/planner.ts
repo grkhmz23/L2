@@ -17,6 +17,8 @@ const actionLabels: Record<AgentActionType, string> = {
   WITHDRAW: 'Withdraw to wallet',
   EXPLAIN_BALANCES: 'Explain balances',
   SHOW_SETTINGS: 'Show settings',
+  OUT_OF_SCOPE: 'Out of scope',
+  CLARIFY_SABLE_ACTION: 'Clarify Sable action',
   UNKNOWN: 'Unknown request',
 };
 
@@ -24,6 +26,7 @@ export function normalizeAgentPlan(plan: Partial<AgentActionPlan>, rawText: stri
   const actionType = plan.actionType || 'UNKNOWN';
   return {
     actionType,
+    domain: plan.domain || (actionType === 'OUT_OF_SCOPE' ? 'out_of_scope' : actionType === 'CLARIFY_SABLE_ACTION' ? 'ambiguous' : 'sable_protocol'),
     intent: plan.intent || {
       actionType,
       confidence: actionType === 'UNKNOWN' ? 0.2 : 0.75,
@@ -181,12 +184,18 @@ export function deterministicPlan(input: string, context?: Partial<AgentToolCont
 }
 
 export function requiresTransaction(actionType: AgentActionType): boolean {
-  return !['EXPLAIN_BALANCES', 'SHOW_SETTINGS', 'UNKNOWN'].includes(actionType);
+  return !['EXPLAIN_BALANCES', 'SHOW_SETTINGS', 'OUT_OF_SCOPE', 'CLARIFY_SABLE_ACTION', 'UNKNOWN'].includes(actionType);
 }
 
 function defaultRoute(actionType: AgentActionType): AgentActionPlan['route'] {
   if (actionType === 'DELEGATE') return 'ER';
-  if (actionType === 'EXPLAIN_BALANCES' || actionType === 'SHOW_SETTINGS' || actionType === 'UNKNOWN') return 'Read only';
+  if (
+    actionType === 'EXPLAIN_BALANCES' ||
+    actionType === 'SHOW_SETTINGS' ||
+    actionType === 'OUT_OF_SCOPE' ||
+    actionType === 'CLARIFY_SABLE_ACTION' ||
+    actionType === 'UNKNOWN'
+  ) return 'Read only';
   return 'Direct Anchor';
 }
 

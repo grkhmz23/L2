@@ -6,6 +6,9 @@ export function buildAgentProposal(plan: AgentActionPlan, context: AgentToolCont
   const warnings = [...plan.warnings];
   const accountsTouched = collectAccounts(plan, context);
 
+  if (plan.domain !== 'sable_protocol') {
+    prerequisites.push('This request is outside Sable protocol action scope.');
+  }
   if (plan.requiresTransaction && !context.walletConnected) {
     prerequisites.push('Connect a wallet before preparing a transaction.');
   }
@@ -53,7 +56,9 @@ export function buildAgentProposal(plan: AgentActionPlan, context: AgentToolCont
     warnings.push('Sable Agent only prepares this action. Your wallet must approve and sign.');
   }
 
-  const blocked = prerequisites.length > 0 || plan.actionType === 'UNKNOWN';
+  const blocked =
+    prerequisites.length > 0 ||
+    ['UNKNOWN', 'OUT_OF_SCOPE', 'CLARIFY_SABLE_ACTION'].includes(plan.actionType);
   const riskLevel = riskForPlan(plan, blocked);
 
   return {
@@ -81,7 +86,7 @@ export function buildAgentProposal(plan: AgentActionPlan, context: AgentToolCont
 }
 
 function requiresTreasury(plan: AgentActionPlan) {
-  return !['CREATE_TREASURY', 'COMPLETE_SETUP', 'SHOW_SETTINGS', 'UNKNOWN'].includes(plan.actionType);
+  return !['CREATE_TREASURY', 'COMPLETE_SETUP', 'SHOW_SETTINGS', 'OUT_OF_SCOPE', 'CLARIFY_SABLE_ACTION', 'UNKNOWN'].includes(plan.actionType);
 }
 
 function collectAccounts(plan: AgentActionPlan, context: AgentToolContext) {
