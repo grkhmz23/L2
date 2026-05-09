@@ -39,6 +39,30 @@ describe('agent route fallback', () => {
     expect(body.plan.summary).toContain('Which Sable action');
   });
 
+  it('answers greetings locally without calling the LLM', async () => {
+    const oldProvider = process.env.SABLE_AGENT_LLM_PROVIDER;
+    const oldKey = process.env.SABLE_AGENT_LLM_API_KEY;
+    process.env.SABLE_AGENT_LLM_PROVIDER = 'deepseek';
+    process.env.SABLE_AGENT_LLM_API_KEY = 'test-key';
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('should not be called'));
+
+    const response = await POST(
+      new Request('http://localhost/api/agent', {
+        method: 'POST',
+        body: JSON.stringify({ message: 'Hello', context: {} }),
+      })
+    );
+    const body = await response.json();
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(body.plan.actionType).toBe('CLARIFY_SABLE_ACTION');
+    expect(body.plan.summary).toContain('Hello, I am Sable Agent');
+
+    fetchSpy.mockRestore();
+    process.env.SABLE_AGENT_LLM_PROVIDER = oldProvider;
+    process.env.SABLE_AGENT_LLM_API_KEY = oldKey;
+  });
+
   it('falls back safely when the LLM returns malformed JSON', async () => {
     const oldProvider = process.env.SABLE_AGENT_LLM_PROVIDER;
     const oldKey = process.env.SABLE_AGENT_LLM_API_KEY;

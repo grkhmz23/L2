@@ -95,4 +95,22 @@ describe('agent chat UI', () => {
 
     fetchSpy.mockRestore();
   });
+
+  it('greeting renders local Sable intro and no proposal card', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('should not be called'));
+
+    render(React.createElement(AgentChatPanel));
+    fireEvent.change(screen.getByPlaceholderText('Send 0.1 USDC to 7abc...'), {
+      target: { value: 'Hello' },
+    });
+    fireEvent.click(screen.getByText('Prepare Proposal'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Hello, I am Sable Agent/)).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Approve & Sign')).not.toBeInTheDocument();
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    fetchSpy.mockRestore();
+  });
 });

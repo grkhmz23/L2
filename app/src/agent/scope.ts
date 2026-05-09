@@ -6,6 +6,9 @@ export const SABLE_SCOPE_REFUSAL =
 export const SABLE_SCOPE_CLARIFICATION =
   'Which Sable action do you want to perform: setup, add asset, deposit, send, delegate, commit, withdraw, or settings?';
 
+export const SABLE_GREETING =
+  'Hello, I am Sable Agent. I can help prepare Sable treasury actions inside this app: setup, add assets, deposit, send, delegate, commit/undelegate, withdraw, explain balances, and show settings.';
+
 export const SABLE_SUGGESTED_COMMANDS = [
   'Create my treasury',
   'Add USDC',
@@ -20,6 +23,7 @@ const BLOCKED_RE =
   /\b(bitcoin|btc|price|market|markets|investment|invest|financial advice|legal advice|medical advice|politics|joke|story|article|summari[sz]e|search|web|code|coding|programming|trading bot|bot|best token|token should i buy|what should i buy|chat with me|general|weather|news|sports)\b/i;
 
 const AMBIGUOUS_RE = /^(help|help me|hi|hello|hey|what can you do|start|assist|agent)$/i;
+const GREETING_RE = /^(hi|hello|hey)$/i;
 
 export function classifySableScope(
   message: string,
@@ -27,6 +31,10 @@ export function classifySableScope(
 ): AgentScopeResult {
   const text = message.trim();
   if (!text) return { domain: 'ambiguous', reason: 'Empty request' };
+
+  if (GREETING_RE.test(text)) {
+    return { domain: 'ambiguous', reason: 'Greeting' };
+  }
 
   if (AMBIGUOUS_RE.test(text)) {
     return { domain: 'ambiguous', reason: 'Ambiguous helper request' };
@@ -69,6 +77,8 @@ export function buildOutOfScopePlan(message: string) {
 }
 
 export function buildClarificationPlan(message: string) {
+  const scope = classifySableScope(message);
+  const isGreeting = scope.reason === 'Greeting';
   return {
     actionType: 'CLARIFY_SABLE_ACTION' as const,
     domain: 'ambiguous' as const,
@@ -77,7 +87,7 @@ export function buildClarificationPlan(message: string) {
       confidence: 1,
       reason: 'Ambiguous request needs Sable action clarification',
     },
-    summary: SABLE_SCOPE_CLARIFICATION,
+    summary: isGreeting ? SABLE_GREETING : SABLE_SCOPE_CLARIFICATION,
     route: 'Read only' as const,
     requiresTransaction: false,
     rawText: message,

@@ -7,6 +7,7 @@ import { buildAgentToolContext } from '@/agent/context';
 import { deterministicPlan } from '@/agent/planner';
 import { buildAgentProposal } from '@/agent/guards';
 import {
+  SABLE_GREETING,
   SABLE_SCOPE_CLARIFICATION,
   SABLE_SCOPE_REFUSAL,
   SABLE_SUGGESTED_COMMANDS,
@@ -83,7 +84,12 @@ export function AgentChatPanel({ compact = false }: { compact?: boolean }) {
       }
       if (scope.domain === 'ambiguous') {
         setProposal(null);
-        addMessage('assistant', SABLE_SCOPE_CLARIFICATION);
+        addMessage(
+          'assistant',
+          scope.reason === 'Greeting'
+            ? `${SABLE_GREETING}\n\nTry: ${SABLE_SUGGESTED_COMMANDS.join(', ')}`
+            : SABLE_SCOPE_CLARIFICATION
+        );
         return;
       }
 
