@@ -8,6 +8,7 @@ import { env } from '@/utils/env';
 import { BalanceList } from '@/components/BalanceList';
 import { ActivityFeed } from '@/components/ActivityFeed';
 import { ActionPanel } from '@/components/ActionPanel';
+import { AgentChatPanel } from '@/components/AgentChatPanel';
 import { FundModal } from '@/components/FundModal';
 import { UserStatus } from '@/components/UserStatus';
 import {
@@ -243,6 +244,7 @@ export function TreasuryView() {
         </div>
 
         <div className="space-y-6 xl:col-span-7 2xl:col-span-8">
+          <AgentChatPanel compact />
           <ActionPanel />
           <ActivityFeed />
         </div>
