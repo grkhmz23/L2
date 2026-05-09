@@ -1,7 +1,7 @@
-use anchor_lang::prelude::*;
 use crate::error::SableError;
 use crate::events::AuctionSettled;
 use crate::state::{Bid, BidderKind, Task, TaskEscrow, TaskState};
+use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 pub struct SettleAuction<'info> {
@@ -42,7 +42,10 @@ pub fn settle_auction(ctx: Context<SettleAuction>) -> Result<()> {
 
     // State and deadline checks
     require!(task.state == TaskState::Open, SableError::TaskWrongState);
-    require!(now > task.bid_reveal_deadline, SableError::TaskDeadlineInvalid);
+    require!(
+        now > task.bid_reveal_deadline,
+        SableError::TaskDeadlineInvalid
+    );
 
     // Validate poster balance PDA by reading owner/agent from account data
     let poster_balance_data = ctx.accounts.poster_balance.try_borrow_data()?;
@@ -227,11 +230,7 @@ pub fn settle_auction(ctx: Context<SettleAuction>) -> Result<()> {
             .checked_add(unrevealed_sum)
             .ok_or(SableError::Overflow)?;
 
-        credit_poster_balance(
-            &ctx.accounts.poster_balance,
-            task.poster_kind,
-            residual,
-        )?;
+        credit_poster_balance(&ctx.accounts.poster_balance, task.poster_kind, residual)?;
 
         task.winning_bidder = if winner.0.bidder_kind == BidderKind::User {
             winner.0.bidder_owner
@@ -277,8 +276,7 @@ fn credit_balance(balance_acc: &AccountInfo, kind: BidderKind, amount: u64) -> R
     if kind == BidderKind::User {
         // UserBalance: amount at offset 73, version at offset 81
         let current_amount = u64::from_le_bytes([
-            data[73], data[74], data[75], data[76],
-            data[77], data[78], data[79], data[80],
+            data[73], data[74], data[75], data[76], data[77], data[78], data[79], data[80],
         ]);
         let new_amount = current_amount
             .checked_add(amount)
@@ -286,18 +284,14 @@ fn credit_balance(balance_acc: &AccountInfo, kind: BidderKind, amount: u64) -> R
         data[73..81].copy_from_slice(&new_amount.to_le_bytes());
 
         let current_version = u64::from_le_bytes([
-            data[81], data[82], data[83], data[84],
-            data[85], data[86], data[87], data[88],
+            data[81], data[82], data[83], data[84], data[85], data[86], data[87], data[88],
         ]);
-        let new_version = current_version
-            .checked_add(1)
-            .ok_or(SableError::Overflow)?;
+        let new_version = current_version.checked_add(1).ok_or(SableError::Overflow)?;
         data[81..89].copy_from_slice(&new_version.to_le_bytes());
     } else {
         // AgentBalance: amount at offset 72, version at offset 80
         let current_amount = u64::from_le_bytes([
-            data[72], data[73], data[74], data[75],
-            data[76], data[77], data[78], data[79],
+            data[72], data[73], data[74], data[75], data[76], data[77], data[78], data[79],
         ]);
         let new_amount = current_amount
             .checked_add(amount)
@@ -305,12 +299,9 @@ fn credit_balance(balance_acc: &AccountInfo, kind: BidderKind, amount: u64) -> R
         data[72..80].copy_from_slice(&new_amount.to_le_bytes());
 
         let current_version = u64::from_le_bytes([
-            data[80], data[81], data[82], data[83],
-            data[84], data[85], data[86], data[87],
+            data[80], data[81], data[82], data[83], data[84], data[85], data[86], data[87],
         ]);
-        let new_version = current_version
-            .checked_add(1)
-            .ok_or(SableError::Overflow)?;
+        let new_version = current_version.checked_add(1).ok_or(SableError::Overflow)?;
         data[80..88].copy_from_slice(&new_version.to_le_bytes());
     }
 
@@ -328,8 +319,7 @@ fn credit_poster_balance(
     if poster_kind == crate::state::PosterKind::User {
         // UserBalance: amount at offset 73, version at offset 81
         let current_amount = u64::from_le_bytes([
-            data[73], data[74], data[75], data[76],
-            data[77], data[78], data[79], data[80],
+            data[73], data[74], data[75], data[76], data[77], data[78], data[79], data[80],
         ]);
         let new_amount = current_amount
             .checked_add(amount)
@@ -337,18 +327,14 @@ fn credit_poster_balance(
         data[73..81].copy_from_slice(&new_amount.to_le_bytes());
 
         let current_version = u64::from_le_bytes([
-            data[81], data[82], data[83], data[84],
-            data[85], data[86], data[87], data[88],
+            data[81], data[82], data[83], data[84], data[85], data[86], data[87], data[88],
         ]);
-        let new_version = current_version
-            .checked_add(1)
-            .ok_or(SableError::Overflow)?;
+        let new_version = current_version.checked_add(1).ok_or(SableError::Overflow)?;
         data[81..89].copy_from_slice(&new_version.to_le_bytes());
     } else {
         // AgentBalance: amount at offset 72, version at offset 80
         let current_amount = u64::from_le_bytes([
-            data[72], data[73], data[74], data[75],
-            data[76], data[77], data[78], data[79],
+            data[72], data[73], data[74], data[75], data[76], data[77], data[78], data[79],
         ]);
         let new_amount = current_amount
             .checked_add(amount)
@@ -356,12 +342,9 @@ fn credit_poster_balance(
         data[72..80].copy_from_slice(&new_amount.to_le_bytes());
 
         let current_version = u64::from_le_bytes([
-            data[80], data[81], data[82], data[83],
-            data[84], data[85], data[86], data[87],
+            data[80], data[81], data[82], data[83], data[84], data[85], data[86], data[87],
         ]);
-        let new_version = current_version
-            .checked_add(1)
-            .ok_or(SableError::Overflow)?;
+        let new_version = current_version.checked_add(1).ok_or(SableError::Overflow)?;
         data[80..88].copy_from_slice(&new_version.to_le_bytes());
     }
 

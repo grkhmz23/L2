@@ -29,13 +29,13 @@ impl UserState {
 /// Spend policy for an agent
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SpendPolicy {
-    pub per_tx_limit: u64,          // 0 = no cap
-    pub daily_limit: u64,           // 0 = no cap
-    pub total_limit: u64,           // lifetime cap, 0 = no cap
-    pub counterparty_mode: CounterpartyMode,  // enum: Any | AllowlistOnly
+    pub per_tx_limit: u64,                   // 0 = no cap
+    pub daily_limit: u64,                    // 0 = no cap
+    pub total_limit: u64,                    // lifetime cap, 0 = no cap
+    pub counterparty_mode: CounterpartyMode, // enum: Any | AllowlistOnly
     pub allowed_counterparties: [Pubkey; 4], // zero pubkey = slot unused
-    pub allowed_mints: [Pubkey; 4], // zero pubkey = slot unused; max 4
-    pub expires_at: i64,            // unix seconds, 0 = never
+    pub allowed_mints: [Pubkey; 4],          // zero pubkey = slot unused; max 4
+    pub expires_at: i64,                     // unix seconds, 0 = never
 }
 
 impl SpendPolicy {
@@ -69,7 +69,8 @@ pub struct AgentState {
 }
 
 impl AgentState {
-    pub const SIZE: usize = 1 + 1 + 1 + 32 + 32 + 32 + 32 + 4 + 4 + 1 + 1 + 8 + SpendPolicy::SIZE + 8;
+    pub const SIZE: usize =
+        1 + 1 + 1 + 32 + 32 + 32 + 32 + 4 + 4 + 1 + 1 + 8 + SpendPolicy::SIZE + 8;
 }
 
 /// Agent counters PDA - running spend counters (keeps AgentState small)
@@ -80,7 +81,7 @@ pub struct AgentCounters {
     pub bump: u8,
     pub spent_total: u64,
     pub spent_today: u64,
-    pub current_day: i64,           // unix day index (block_time / 86400)
+    pub current_day: i64, // unix day index (block_time / 86400)
 }
 
 impl AgentCounters {
@@ -235,6 +236,7 @@ pub fn write_account_state<T: AnchorSerialize>(
 ) -> Result<()> {
     let mut data = account_info.try_borrow_mut_data()?;
     let mut slice = &mut data[8..];
-    state.serialize(&mut slice)
+    state
+        .serialize(&mut slice)
         .map_err(|_| error!(crate::error::SableError::InvalidAccountData))
 }

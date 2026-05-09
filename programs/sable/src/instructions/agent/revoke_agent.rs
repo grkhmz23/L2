@@ -1,7 +1,7 @@
-use anchor_lang::prelude::*;
 use crate::error::SableError;
 use crate::events::AgentRevoked;
 use crate::state::{AgentState, UserState};
+use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 pub struct RevokeAgent<'info> {

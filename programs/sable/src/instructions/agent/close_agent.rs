@@ -1,6 +1,6 @@
-use anchor_lang::prelude::*;
 use crate::error::SableError;
 use crate::state::{AgentBalance, AgentState, UserState};
+use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 pub struct CloseAgent<'info> {
@@ -41,20 +41,15 @@ pub fn close_agent(ctx: Context<CloseAgent>) -> Result<()> {
     );
 
     // Agent must have no children
-    require!(
-        agent.child_count == 0,
-        SableError::AgentHasChildren
-    );
+    require!(agent.child_count == 0, SableError::AgentHasChildren);
 
     // Verify all provided AgentBalance accounts have amount == 0 and belong to this agent
     for balance_acc_info in ctx.remaining_accounts.iter() {
         let balance_data = balance_acc_info.try_borrow_data()?;
-        
+
         // Deserialize as AgentBalance
-        let balance = AgentBalance::try_deserialize(
-            &mut &balance_data[..]
-        )
-        .map_err(|_| error!(SableError::InvalidRecipientAccounts))?;
+        let balance = AgentBalance::try_deserialize(&mut &balance_data[..])
+            .map_err(|_| error!(SableError::InvalidRecipientAccounts))?;
 
         // Must belong to the agent being closed
         require!(
@@ -63,10 +58,7 @@ pub fn close_agent(ctx: Context<CloseAgent>) -> Result<()> {
         );
 
         // Must have zero balance
-        require!(
-            balance.amount == 0,
-            SableError::AgentHasBalances
-        );
+        require!(balance.amount == 0, SableError::AgentHasBalances);
 
         // Verify PDA derivation using the mint from the account data
         let (expected_pda, _) = Pubkey::find_program_address(

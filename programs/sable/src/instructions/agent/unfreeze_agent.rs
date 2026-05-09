@@ -1,7 +1,7 @@
-use anchor_lang::prelude::*;
 use crate::error::SableError;
 use crate::events::AgentUnfrozen;
 use crate::state::{AgentState, ParentKind, UserState};
+use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 pub struct UnfreezeAgent<'info> {

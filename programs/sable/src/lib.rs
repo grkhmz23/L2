@@ -5,9 +5,7 @@ use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{
     self,
     spl_token::{self, solana_program::program_pack::Pack},
-    Token,
-    TokenAccount,
-    Transfer,
+    Token, TokenAccount, Transfer,
 };
 use ephemeral_rollups_sdk::anchor::{commit, delegate, ephemeral};
 use ephemeral_rollups_sdk::cpi::{delegate_account, DelegateAccounts, DelegateConfig};
@@ -37,7 +35,7 @@ mod permission_cpi {
     /// Serialize `MembersArgs { members: Some(vec![]) }` (owner-only default)
     fn serialize_empty_members() -> Vec<u8> {
         let mut data = Vec::with_capacity(5);
-        data.push(1u8);                    // Option::Some
+        data.push(1u8); // Option::Some
         data.extend_from_slice(&0u32.to_le_bytes()); // Vec::len = 0
         data
     }
@@ -292,8 +290,7 @@ use instructions::auction::*;
 use state::*;
 
 // Sable defaults to TEE validator because the project is privacy-first
-pub const ER_VALIDATOR_TEE: Pubkey =
-    pubkey!("MTEWGuqxUpYZGFJQcp8tLN7x5v9BSeoFHYWQQ3n3xzo");
+pub const ER_VALIDATOR_TEE: Pubkey = pubkey!("MTEWGuqxUpYZGFJQcp8tLN7x5v9BSeoFHYWQQ3n3xzo");
 
 // Default commit frequency: 1 minute
 pub const DEFAULT_COMMIT_FREQUENCY_MS: u32 = 60_000;
@@ -315,8 +312,7 @@ pub mod sable {
     ) -> Result<()> {
         let config = &mut ctx.accounts.config;
         config.admin = ctx.accounts.config_admin.key();
-        config.delegation_program_id =
-            delegation_program_id.unwrap_or(ephemeral_rollups_sdk::id());
+        config.delegation_program_id = delegation_program_id.unwrap_or(ephemeral_rollups_sdk::id());
         config.bump = ctx.bumps.config;
 
         let vault_authority = &mut ctx.accounts.vault_authority;
@@ -435,8 +431,7 @@ pub mod sable {
                 owner_key.as_ref(),
                 mint_key.as_ref(),
             ];
-            let (expected_pda, bump) =
-                Pubkey::find_program_address(expected_seeds, ctx.program_id);
+            let (expected_pda, bump) = Pubkey::find_program_address(expected_seeds, ctx.program_id);
             require!(
                 balance_acc.key() == expected_pda,
                 SableError::InvalidRecipientAccounts

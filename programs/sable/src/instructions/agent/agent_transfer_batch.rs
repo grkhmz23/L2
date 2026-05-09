@@ -1,8 +1,8 @@
-use anchor_lang::prelude::*;
 use crate::error::SableError;
 use crate::events::{TransferBatchEvent, TransferEvent};
 use crate::policy::validate_spend;
 use crate::state::{AgentBalance, AgentCounters, AgentState, RecipientKind, TransferItem};
+use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 #[instruction(items: Vec<TransferItem>, ancestor_count: u8)]
@@ -185,8 +185,14 @@ pub fn agent_transfer_batch(
             if item.kind == RecipientKind::User {
                 // UserBalance: amount at offset 73, version at offset 81
                 let current_amount = u64::from_le_bytes([
-                    dest_data[73], dest_data[74], dest_data[75], dest_data[76],
-                    dest_data[77], dest_data[78], dest_data[79], dest_data[80],
+                    dest_data[73],
+                    dest_data[74],
+                    dest_data[75],
+                    dest_data[76],
+                    dest_data[77],
+                    dest_data[78],
+                    dest_data[79],
+                    dest_data[80],
                 ]);
                 let new_amount = current_amount
                     .checked_add(item.amount)
@@ -194,18 +200,28 @@ pub fn agent_transfer_batch(
                 dest_data[73..81].copy_from_slice(&new_amount.to_le_bytes());
 
                 let current_version = u64::from_le_bytes([
-                    dest_data[81], dest_data[82], dest_data[83], dest_data[84],
-                    dest_data[85], dest_data[86], dest_data[87], dest_data[88],
+                    dest_data[81],
+                    dest_data[82],
+                    dest_data[83],
+                    dest_data[84],
+                    dest_data[85],
+                    dest_data[86],
+                    dest_data[87],
+                    dest_data[88],
                 ]);
-                let new_version = current_version
-                    .checked_add(1)
-                    .ok_or(SableError::Overflow)?;
+                let new_version = current_version.checked_add(1).ok_or(SableError::Overflow)?;
                 dest_data[81..89].copy_from_slice(&new_version.to_le_bytes());
             } else {
                 // AgentBalance: amount at offset 72, version at offset 80
                 let current_amount = u64::from_le_bytes([
-                    dest_data[72], dest_data[73], dest_data[74], dest_data[75],
-                    dest_data[76], dest_data[77], dest_data[78], dest_data[79],
+                    dest_data[72],
+                    dest_data[73],
+                    dest_data[74],
+                    dest_data[75],
+                    dest_data[76],
+                    dest_data[77],
+                    dest_data[78],
+                    dest_data[79],
                 ]);
                 let new_amount = current_amount
                     .checked_add(item.amount)
@@ -213,12 +229,16 @@ pub fn agent_transfer_batch(
                 dest_data[72..80].copy_from_slice(&new_amount.to_le_bytes());
 
                 let current_version = u64::from_le_bytes([
-                    dest_data[80], dest_data[81], dest_data[82], dest_data[83],
-                    dest_data[84], dest_data[85], dest_data[86], dest_data[87],
+                    dest_data[80],
+                    dest_data[81],
+                    dest_data[82],
+                    dest_data[83],
+                    dest_data[84],
+                    dest_data[85],
+                    dest_data[86],
+                    dest_data[87],
                 ]);
-                let new_version = current_version
-                    .checked_add(1)
-                    .ok_or(SableError::Overflow)?;
+                let new_version = current_version.checked_add(1).ok_or(SableError::Overflow)?;
                 dest_data[80..88].copy_from_slice(&new_version.to_le_bytes());
             }
         }

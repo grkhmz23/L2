@@ -1,7 +1,7 @@
-use anchor_lang::prelude::*;
 use crate::error::SableError;
 use crate::events::TransferEvent;
 use crate::state::{AgentBalance, AgentState, UserBalance, UserState};
+use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 #[instruction(amount: u64)]

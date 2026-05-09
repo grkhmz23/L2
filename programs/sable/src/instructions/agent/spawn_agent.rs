@@ -1,7 +1,9 @@
-use anchor_lang::prelude::*;
 use crate::error::SableError;
 use crate::events::AgentSpawned;
-use crate::state::{AgentCounters, AgentState, CounterpartyMode, ParentKind, SpendPolicy, UserState};
+use crate::state::{
+    AgentCounters, AgentState, CounterpartyMode, ParentKind, SpendPolicy, UserState,
+};
+use anchor_lang::prelude::*;
 
 pub const MAX_AGENTS_PER_PARENT: usize = 64;
 pub const MAX_DEPTH: u32 = 4;
@@ -63,10 +65,7 @@ pub fn spawn_agent(
 ) -> Result<()> {
     // Validate label length
     let label_bytes = label.as_bytes();
-    require!(
-        label_bytes.len() <= 32,
-        SableError::InvalidAmount
-    );
+    require!(label_bytes.len() <= 32, SableError::InvalidAmount);
     let mut label_arr = [0u8; 32];
     label_arr[..label_bytes.len()].copy_from_slice(label_bytes);
 
@@ -75,10 +74,9 @@ pub fn spawn_agent(
     // Disambiguate and validate parent
     let (root_user, depth) = if parent_kind == ParentKind::User {
         // Parent must be a UserState
-        let parent_state = UserState::try_deserialize(
-            &mut &ctx.accounts.parent.try_borrow_data()?[..]
-        )
-        .map_err(|_| error!(SableError::InvalidRecipientAccounts))?;
+        let parent_state =
+            UserState::try_deserialize(&mut &ctx.accounts.parent.try_borrow_data()?[..])
+                .map_err(|_| error!(SableError::InvalidRecipientAccounts))?;
 
         require!(
             parent_state.owner == ctx.accounts.parent_owner.key(),
@@ -99,10 +97,9 @@ pub fn spawn_agent(
         (ctx.accounts.parent.key(), 1u32)
     } else {
         // Parent must be an AgentState
-        let parent_state = AgentState::try_deserialize(
-            &mut &ctx.accounts.parent.try_borrow_data()?[..]
-        )
-        .map_err(|_| error!(SableError::InvalidRecipientAccounts))?;
+        let parent_state =
+            AgentState::try_deserialize(&mut &ctx.accounts.parent.try_borrow_data()?[..])
+                .map_err(|_| error!(SableError::InvalidRecipientAccounts))?;
 
         require!(
             parent_state.owner == ctx.accounts.parent_owner.key(),
@@ -144,10 +141,7 @@ pub fn spawn_agent(
     };
 
     // Depth check
-    require!(
-        depth < MAX_DEPTH,
-        SableError::AgentDepthExceeded
-    );
+    require!(depth < MAX_DEPTH, SableError::AgentDepthExceeded);
 
     // Increment parent's count
     {
@@ -156,7 +150,10 @@ pub fn spawn_agent(
             // agent_count is at offset 49 (8 disc + 32 owner + 1 bump + 8 version)
             let count_bytes = &mut parent_data[49..53];
             let current = u32::from_le_bytes([
-                count_bytes[0], count_bytes[1], count_bytes[2], count_bytes[3],
+                count_bytes[0],
+                count_bytes[1],
+                count_bytes[2],
+                count_bytes[3],
             ]);
             let next = current.checked_add(1).ok_or(SableError::Overflow)?;
             count_bytes.copy_from_slice(&next.to_le_bytes());
@@ -165,7 +162,10 @@ pub fn spawn_agent(
             // 32 parent + 32 owner + 32 root_user + 32 label + 4 nonce)
             let count_bytes = &mut parent_data[143..147];
             let current = u32::from_le_bytes([
-                count_bytes[0], count_bytes[1], count_bytes[2], count_bytes[3],
+                count_bytes[0],
+                count_bytes[1],
+                count_bytes[2],
+                count_bytes[3],
             ]);
             let next = current.checked_add(1).ok_or(SableError::Overflow)?;
             count_bytes.copy_from_slice(&next.to_le_bytes());
@@ -230,10 +230,7 @@ pub fn verify_ancestor_chain(
     expected_root_user: Pubkey,
 ) -> Result<u32> {
     // Must have at least the root UserState
-    require!(
-        !ancestors.is_empty(),
-        SableError::InvalidAncestorChain
-    );
+    require!(!ancestors.is_empty(), SableError::InvalidAncestorChain);
 
     // Verify root is a valid UserState
     let root = &ancestors[0];
@@ -245,10 +242,8 @@ pub fn verify_ancestor_chain(
     );
 
     // Parse parent agent
-    let parent_agent = AgentState::try_deserialize(
-        &mut &parent_account.try_borrow_data()?[..]
-    )
-    .map_err(|_| error!(SableError::InvalidAncestorChain))?;
+    let parent_agent = AgentState::try_deserialize(&mut &parent_account.try_borrow_data()?[..])
+        .map_err(|_| error!(SableError::InvalidAncestorChain))?;
 
     // Verify parent's PDA
     let (expected_parent_pda, _) = Pubkey::find_program_address(
@@ -276,10 +271,8 @@ pub fn verify_ancestor_chain(
 
     for i in (1..ancestors.len()).rev() {
         let ancestor = &ancestors[i];
-        let ancestor_agent = AgentState::try_deserialize(
-            &mut &ancestor.try_borrow_data()?[..]
-        )
-        .map_err(|_| error!(SableError::InvalidAncestorChain))?;
+        let ancestor_agent = AgentState::try_deserialize(&mut &ancestor.try_borrow_data()?[..])
+            .map_err(|_| error!(SableError::InvalidAncestorChain))?;
 
         // Verify ancestor PDA
         let (expected_ancestor_pda, _) = Pubkey::find_program_address(

@@ -20,9 +20,9 @@ pub use set_policy::*;
 pub use spawn_agent::*;
 pub use unfreeze_agent::*;
 
-use anchor_lang::prelude::*;
 use crate::error::SableError;
 use crate::state::{AgentState, UserState};
+use anchor_lang::prelude::*;
 
 /// Verify an agent's ancestor chain and ensure no ancestor is frozen or revoked.
 ///
@@ -42,10 +42,7 @@ pub fn verify_ancestors_not_frozen(
     }
 
     // Must have at least the root UserState
-    require!(
-        !ancestors.is_empty(),
-        SableError::InvalidAncestorChain
-    );
+    require!(!ancestors.is_empty(), SableError::InvalidAncestorChain);
 
     // Verify root is a valid UserState and matches agent's root_user
     let root = &ancestors[0];
@@ -81,10 +78,8 @@ pub fn verify_ancestors_not_frozen(
     // verifying each link and frozen/revoked status
     for i in (1..ancestors.len()).rev() {
         let ancestor = &ancestors[i];
-        let ancestor_agent = AgentState::try_deserialize(
-            &mut &ancestor.try_borrow_data()?[..]
-        )
-        .map_err(|_| error!(SableError::InvalidAncestorChain))?;
+        let ancestor_agent = AgentState::try_deserialize(&mut &ancestor.try_borrow_data()?[..])
+            .map_err(|_| error!(SableError::InvalidAncestorChain))?;
 
         // Verify ancestor PDA
         let (expected_ancestor_pda, _) = Pubkey::find_program_address(
@@ -130,10 +125,7 @@ pub fn verify_ancestor_chain_for_auth(
     authorized_signer: &Pubkey,
 ) -> Result<()> {
     // Must have at least the root UserState
-    require!(
-        !ancestors.is_empty(),
-        SableError::InvalidAncestorChain
-    );
+    require!(!ancestors.is_empty(), SableError::InvalidAncestorChain);
 
     // Verify root is a valid UserState and matches agent's root_user
     let root = &ancestors[0];
@@ -176,10 +168,8 @@ pub fn verify_ancestor_chain_for_auth(
     // verifying each link and checking ownership
     for i in (1..ancestors.len()).rev() {
         let ancestor = &ancestors[i];
-        let ancestor_agent = AgentState::try_deserialize(
-            &mut &ancestor.try_borrow_data()?[..]
-        )
-        .map_err(|_| error!(SableError::InvalidAncestorChain))?;
+        let ancestor_agent = AgentState::try_deserialize(&mut &ancestor.try_borrow_data()?[..])
+            .map_err(|_| error!(SableError::InvalidAncestorChain))?;
 
         // Verify ancestor PDA
         let (expected_ancestor_pda, _) = Pubkey::find_program_address(
@@ -208,10 +198,7 @@ pub fn verify_ancestor_chain_for_auth(
         }
     }
 
-    require!(
-        authorized,
-        SableError::NotAgentRoot
-    );
+    require!(authorized, SableError::NotAgentRoot);
 
     Ok(())
 }

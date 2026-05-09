@@ -1,9 +1,9 @@
-use anchor_lang::prelude::*;
 use crate::error::SableError;
 use crate::events::TaskCancelled;
 use crate::state::{
     AgentBalance, AgentState, PosterKind, Task, TaskEscrow, TaskState, UserBalance, UserState,
 };
+use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 pub struct CancelTask<'info> {
@@ -44,7 +44,10 @@ pub fn cancel_task(ctx: Context<CancelTask>) -> Result<()> {
 
     // State checks
     require!(task.state == TaskState::Open, SableError::TaskWrongState);
-    require!(now < task.bid_commit_deadline, SableError::TaskNotCancellable);
+    require!(
+        now < task.bid_commit_deadline,
+        SableError::TaskNotCancellable
+    );
     require!(task.bid_count == 0, SableError::TaskNotCancellable);
 
     // Verify escrow matches task
@@ -63,12 +66,18 @@ pub fn cancel_task(ctx: Context<CancelTask>) -> Result<()> {
         if task.poster_kind == PosterKind::User {
             let poster_state = UserState::try_deserialize(&mut &poster_data[..])
                 .map_err(|_| error!(SableError::InvalidRecipientAccounts))?;
-            require!(poster_state.owner == ctx.accounts.signer.key(), SableError::NotAuthorized);
+            require!(
+                poster_state.owner == ctx.accounts.signer.key(),
+                SableError::NotAuthorized
+            );
             poster_state.owner
         } else {
             let poster_state = AgentState::try_deserialize(&mut &poster_data[..])
                 .map_err(|_| error!(SableError::InvalidRecipientAccounts))?;
-            require!(poster_state.owner == ctx.accounts.signer.key(), SableError::AgentNotAuthorized);
+            require!(
+                poster_state.owner == ctx.accounts.signer.key(),
+                SableError::AgentNotAuthorized
+            );
             poster_state.owner
         }
     };
@@ -111,22 +120,25 @@ fn credit_user_balance(
     let balance_data = balance_acc_info.try_borrow_data()?;
     let balance = UserBalance::try_deserialize(&mut &balance_data[..])
         .map_err(|_| error!(SableError::InvalidRecipientAccounts))?;
-    require!(balance.owner == expected_owner, SableError::InvalidRecipientAccounts);
+    require!(
+        balance.owner == expected_owner,
+        SableError::InvalidRecipientAccounts
+    );
     require!(balance.mint == expected_mint, SableError::InvalidMint);
     drop(balance_data);
 
     let mut data = balance_acc_info.try_borrow_mut_data()?;
     // UserBalance: amount at offset 73, version at offset 81
     let current_amount = u64::from_le_bytes([
-        data[73], data[74], data[75], data[76],
-        data[77], data[78], data[79], data[80],
+        data[73], data[74], data[75], data[76], data[77], data[78], data[79], data[80],
     ]);
-    let new_amount = current_amount.checked_add(amount).ok_or(SableError::Overflow)?;
+    let new_amount = current_amount
+        .checked_add(amount)
+        .ok_or(SableError::Overflow)?;
     data[73..81].copy_from_slice(&new_amount.to_le_bytes());
 
     let current_version = u64::from_le_bytes([
-        data[81], data[82], data[83], data[84],
-        data[85], data[86], data[87], data[88],
+        data[81], data[82], data[83], data[84], data[85], data[86], data[87], data[88],
     ]);
     let new_version = current_version.checked_add(1).ok_or(SableError::Overflow)?;
     data[81..89].copy_from_slice(&new_version.to_le_bytes());
@@ -144,22 +156,25 @@ fn credit_agent_balance(
     let balance_data = balance_acc_info.try_borrow_data()?;
     let balance = AgentBalance::try_deserialize(&mut &balance_data[..])
         .map_err(|_| error!(SableError::InvalidRecipientAccounts))?;
-    require!(balance.agent == expected_agent, SableError::InvalidRecipientAccounts);
+    require!(
+        balance.agent == expected_agent,
+        SableError::InvalidRecipientAccounts
+    );
     require!(balance.mint == expected_mint, SableError::InvalidMint);
     drop(balance_data);
 
     let mut data = balance_acc_info.try_borrow_mut_data()?;
     // AgentBalance: amount at offset 72, version at offset 80
     let current_amount = u64::from_le_bytes([
-        data[72], data[73], data[74], data[75],
-        data[76], data[77], data[78], data[79],
+        data[72], data[73], data[74], data[75], data[76], data[77], data[78], data[79],
     ]);
-    let new_amount = current_amount.checked_add(amount).ok_or(SableError::Overflow)?;
+    let new_amount = current_amount
+        .checked_add(amount)
+        .ok_or(SableError::Overflow)?;
     data[72..80].copy_from_slice(&new_amount.to_le_bytes());
 
     let current_version = u64::from_le_bytes([
-        data[80], data[81], data[82], data[83],
-        data[84], data[85], data[86], data[87],
+        data[80], data[81], data[82], data[83], data[84], data[85], data[86], data[87],
     ]);
     let new_version = current_version.checked_add(1).ok_or(SableError::Overflow)?;
     data[80..88].copy_from_slice(&new_version.to_le_bytes());

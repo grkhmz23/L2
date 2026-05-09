@@ -1,8 +1,8 @@
-use anchor_lang::prelude::*;
-use solana_program::keccak::hashv;
 use crate::error::SableError;
 use crate::events::BidRevealed;
 use crate::state::{AgentState, Bid, BidderKind, Task, TaskState, UserState};
+use anchor_lang::prelude::*;
+use solana_program::keccak::hashv;
 
 #[derive(Accounts)]
 pub struct RevealBid<'info> {
@@ -42,8 +42,14 @@ pub fn reveal_bid(ctx: Context<RevealBid>, amount: u64, nonce: u64) -> Result<()
     require!(task.state == TaskState::Open, SableError::TaskWrongState);
 
     // Must be within reveal window
-    require!(now >= task.bid_commit_deadline, SableError::TaskDeadlineInvalid);
-    require!(now <= task.bid_reveal_deadline, SableError::TaskDeadlineInvalid);
+    require!(
+        now >= task.bid_commit_deadline,
+        SableError::TaskDeadlineInvalid
+    );
+    require!(
+        now <= task.bid_reveal_deadline,
+        SableError::TaskDeadlineInvalid
+    );
 
     // Bid must not already be revealed
     require!(!bid.revealed, SableError::TaskWrongState);

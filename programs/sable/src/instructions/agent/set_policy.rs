@@ -1,7 +1,7 @@
-use anchor_lang::prelude::*;
 use crate::error::SableError;
 use crate::events::PolicyUpdated;
 use crate::state::{AgentState, SpendPolicy, UserState};
+use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 pub struct SetPolicy<'info> {

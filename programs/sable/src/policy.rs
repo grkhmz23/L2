@@ -1,6 +1,6 @@
-use anchor_lang::prelude::*;
 use crate::error::SableError;
 use crate::state::{AgentCounters, CounterpartyMode, SpendPolicy};
+use anchor_lang::prelude::*;
 
 /// Validate a spend against policy and return updated counters.
 ///
@@ -344,7 +344,7 @@ mod keccak_tests {
     fn hex_to_bytes(hex: &str) -> Vec<u8> {
         let mut bytes = Vec::with_capacity(hex.len() / 2);
         for i in (0..hex.len()).step_by(2) {
-            let byte = u8::from_str_radix(&hex[i..i+2], 16).unwrap();
+            let byte = u8::from_str_radix(&hex[i..i + 2], 16).unwrap();
             bytes.push(byte);
         }
         bytes
@@ -355,8 +355,13 @@ mod keccak_tests {
         let amount: u64 = 100;
         let nonce: u64 = 42;
         let bidder = solana_program::pubkey::Pubkey::default();
-        let hash = hashv(&[&amount.to_le_bytes(), &nonce.to_le_bytes(), &bidder.to_bytes()]);
-        let expected = hex_to_bytes("212b3806c02335536147cc08dc78025686002eb74dc19d89f434d1ed5d0039ef");
+        let hash = hashv(&[
+            &amount.to_le_bytes(),
+            &nonce.to_le_bytes(),
+            &bidder.to_bytes(),
+        ]);
+        let expected =
+            hex_to_bytes("212b3806c02335536147cc08dc78025686002eb74dc19d89f434d1ed5d0039ef");
         assert_eq!(hash.to_bytes().to_vec(), expected);
     }
 
@@ -365,8 +370,13 @@ mod keccak_tests {
         let amount: u64 = 0;
         let nonce: u64 = 0;
         let bidder = solana_program::pubkey::Pubkey::default();
-        let hash = hashv(&[&amount.to_le_bytes(), &nonce.to_le_bytes(), &bidder.to_bytes()]);
-        let expected = hex_to_bytes("c980e59163ce244bb4bb6211f48c7b46f88a4f40943e84eb99bdc41e129bd293");
+        let hash = hashv(&[
+            &amount.to_le_bytes(),
+            &nonce.to_le_bytes(),
+            &bidder.to_bytes(),
+        ]);
+        let expected =
+            hex_to_bytes("c980e59163ce244bb4bb6211f48c7b46f88a4f40943e84eb99bdc41e129bd293");
         assert_eq!(hash.to_bytes().to_vec(), expected);
     }
 
@@ -375,8 +385,13 @@ mod keccak_tests {
         let amount: u64 = u64::MAX;
         let nonce: u64 = u64::MAX;
         let bidder = solana_program::pubkey!("SaSAXcdWhyr1KD8TKRg6K7WPuxcPLZJHKEwsjQgL5Di");
-        let hash = hashv(&[&amount.to_le_bytes(), &nonce.to_le_bytes(), &bidder.to_bytes()]);
-        let expected = hex_to_bytes("93dda10a1b9a91b0ddde7a19bbe3f8d69856bc728065011f9035897d2001fcdc");
+        let hash = hashv(&[
+            &amount.to_le_bytes(),
+            &nonce.to_le_bytes(),
+            &bidder.to_bytes(),
+        ]);
+        let expected =
+            hex_to_bytes("93dda10a1b9a91b0ddde7a19bbe3f8d69856bc728065011f9035897d2001fcdc");
         assert_eq!(hash.to_bytes().to_vec(), expected);
     }
 }

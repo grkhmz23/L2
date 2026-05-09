@@ -1,11 +1,11 @@
-use anchor_lang::prelude::*;
 use crate::error::SableError;
 use crate::events::TaskCreated;
 use crate::policy::validate_spend;
 use crate::state::{
-    AgentBalance, AgentCounters, AgentState, ParentKind, PosterKind, Task, TaskEscrow,
-    TaskState, UserBalance, UserState,
+    AgentBalance, AgentCounters, AgentState, ParentKind, PosterKind, Task, TaskEscrow, TaskState,
+    UserBalance, UserState,
 };
+use anchor_lang::prelude::*;
 
 pub const TASK_SEED: &str = "task";
 pub const TASK_ESCROW_SEED: &str = "task_escrow";
@@ -115,10 +115,18 @@ pub fn create_task(
         };
 
         require!(poster_state.owner == signer, SableError::NotAuthorized);
-        require!(task_id == poster_state.task_count, SableError::InvalidAmount);
+        require!(
+            task_id == poster_state.task_count,
+            SableError::InvalidAmount
+        );
 
         // Validate and debit UserBalance
-        debit_user_balance(&ctx.accounts.poster_balance, poster_state.owner, mint_key, budget)?;
+        debit_user_balance(
+            &ctx.accounts.poster_balance,
+            poster_state.owner,
+            mint_key,
+            budget,
+        )?;
 
         poster_state.task_count = poster_state
             .task_count
@@ -139,7 +147,10 @@ pub fn create_task(
             !poster_state.frozen && !poster_state.revoked,
             SableError::AgentFrozenOrRevoked
         );
-        require!(task_id == poster_state.task_count, SableError::InvalidAmount);
+        require!(
+            task_id == poster_state.task_count,
+            SableError::InvalidAmount
+        );
 
         // Verify ancestor chain is not frozen/revoked (depth > 1 only)
         if poster_state.parent_kind == ParentKind::Agent {
@@ -153,10 +164,7 @@ pub fn create_task(
 
         // Validate agent_counters PDA
         let (expected_counters, _) = Pubkey::find_program_address(
-            &[
-                crate::AGENT_COUNTERS_SEED.as_bytes(),
-                poster_key.as_ref(),
-            ],
+            &[crate::AGENT_COUNTERS_SEED.as_bytes(), poster_key.as_ref()],
             ctx.program_id,
         );
         require!(
@@ -181,12 +189,7 @@ pub fn create_task(
         )?;
 
         // Validate and debit AgentBalance
-        debit_agent_balance(
-            &ctx.accounts.poster_balance,
-            poster_key,
-            mint_key,
-            budget,
-        )?;
+        debit_agent_balance(&ctx.accounts.poster_balance, poster_key, mint_key, budget)?;
 
         // Write back updated counters
         counters.spent_total = updated_counters.spent_total;
@@ -269,7 +272,10 @@ fn debit_user_balance(
     let balance_data = balance_acc_info.try_borrow_data()?;
     let balance = UserBalance::try_deserialize(&mut &balance_data[..])
         .map_err(|_| error!(SableError::InvalidRecipientAccounts))?;
-    require!(balance.owner == expected_owner, SableError::InvalidRecipientAccounts);
+    require!(
+        balance.owner == expected_owner,
+        SableError::InvalidRecipientAccounts
+    );
     require!(balance.mint == expected_mint, SableError::InvalidMint);
     require!(balance.amount >= amount, SableError::InsufficientBalance);
     drop(balance_data);
@@ -278,15 +284,15 @@ fn debit_user_balance(
     // UserBalance: discriminator(8) + owner(32) + mint(32) + bump(1) + amount(8) + version(8)
     // amount at offset 73, version at offset 81
     let current_amount = u64::from_le_bytes([
-        data[73], data[74], data[75], data[76],
-        data[77], data[78], data[79], data[80],
+        data[73], data[74], data[75], data[76], data[77], data[78], data[79], data[80],
     ]);
-    let new_amount = current_amount.checked_sub(amount).ok_or(SableError::Underflow)?;
+    let new_amount = current_amount
+        .checked_sub(amount)
+        .ok_or(SableError::Underflow)?;
     data[73..81].copy_from_slice(&new_amount.to_le_bytes());
 
     let current_version = u64::from_le_bytes([
-        data[81], data[82], data[83], data[84],
-        data[85], data[86], data[87], data[88],
+        data[81], data[82], data[83], data[84], data[85], data[86], data[87], data[88],
     ]);
     let new_version = current_version.checked_add(1).ok_or(SableError::Overflow)?;
     data[81..89].copy_from_slice(&new_version.to_le_bytes());
@@ -304,24 +310,30 @@ fn debit_agent_balance(
     let balance_data = balance_acc_info.try_borrow_data()?;
     let balance = AgentBalance::try_deserialize(&mut &balance_data[..])
         .map_err(|_| error!(SableError::InvalidRecipientAccounts))?;
-    require!(balance.agent == expected_agent, SableError::InvalidRecipientAccounts);
+    require!(
+        balance.agent == expected_agent,
+        SableError::InvalidRecipientAccounts
+    );
     require!(balance.mint == expected_mint, SableError::InvalidMint);
-    require!(balance.amount >= amount, SableError::InsufficientAgentBalance);
+    require!(
+        balance.amount >= amount,
+        SableError::InsufficientAgentBalance
+    );
     drop(balance_data);
 
     let mut data = balance_acc_info.try_borrow_mut_data()?;
     // AgentBalance: discriminator(8) + agent(32) + mint(32) + amount(8) + version(8) + bump(1)
     // amount at offset 72, version at offset 80
     let current_amount = u64::from_le_bytes([
-        data[72], data[73], data[74], data[75],
-        data[76], data[77], data[78], data[79],
+        data[72], data[73], data[74], data[75], data[76], data[77], data[78], data[79],
     ]);
-    let new_amount = current_amount.checked_sub(amount).ok_or(SableError::Underflow)?;
+    let new_amount = current_amount
+        .checked_sub(amount)
+        .ok_or(SableError::Underflow)?;
     data[72..80].copy_from_slice(&new_amount.to_le_bytes());
 
     let current_version = u64::from_le_bytes([
-        data[80], data[81], data[82], data[83],
-        data[84], data[85], data[86], data[87],
+        data[80], data[81], data[82], data[83], data[84], data[85], data[86], data[87],
     ]);
     let new_version = current_version.checked_add(1).ok_or(SableError::Overflow)?;
     data[80..88].copy_from_slice(&new_version.to_le_bytes());
