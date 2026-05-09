@@ -47,10 +47,9 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Setup Rust
-        uses: dtolnay/rust-action@stable
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-          components: rustfmt, clippy
+        run: |
+          rustup toolchain install ${{ env.RUST_VERSION }} --component rustfmt --component clippy
+          rustup default ${{ env.RUST_VERSION }}
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
@@ -101,13 +100,15 @@ jobs:
 
       - name: Scan for placeholders
         run: |
-          # Scan for common placeholder patterns
+          # Scan for common placeholder patterns. Keep this case-sensitive so
+          # legitimate UI placeholder attributes/classes are not treated as
+          # deployment-blocking placeholders.
           patterns=("PLACEHOLDER" "TODO:" "FIXME:" "HACK:" "XXX:" "lorem" "changeme" "YOUR_" "TBD")
           found=0
           
           for pattern in "${patterns[@]}"; do
-            # Exclude legitimate uses like HTML placeholder attributes and SHA hashes
-            results=$(grep -ri "$pattern" --include="*.ts" --include="*.tsx" --include="*.rs" --include="*.js" --exclude-dir=node_modules --exclude-dir=target --exclude-dir=.git . 2>/dev/null | grep -v "placeholder=" | grep -v "sha512-" | grep -v "integrity" || true)
+            # Exclude legitimate uses like SHA hashes and integrity metadata.
+            results=$(grep -r "$pattern" --include="*.ts" --include="*.tsx" --include="*.rs" --include="*.js" --exclude-dir=node_modules --exclude-dir=target --exclude-dir=.git . 2>/dev/null | grep -v "sha512-" | grep -v "integrity" || true)
             if [ -n "$results" ]; then
               echo "Found $pattern:"
               echo "$results"
