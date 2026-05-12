@@ -110,7 +110,7 @@ export function deterministicPlan(input: string, context?: Partial<AgentToolCont
     }, rawText);
   }
 
-  if ((/batch|these addresses|recipients|addresses:/i.test(rawText) && /(send|transfer|pay)/i.test(rawText)) || /airdrop|pay list/i.test(rawText)) {
+  if ((/batch|these addresses|recipients|addresses:|wallets/i.test(rawText) && /(send|transfer|pay)/i.test(rawText)) || /airdrop|pay list/i.test(rawText)) {
     const recipients = extractRecipients(rawText, amount);
     const missing = missingFields(['amount', 'mint', 'recipients'], {
       amount: recipients.some((r) => r.amount) ? 'per-row' : amount,
