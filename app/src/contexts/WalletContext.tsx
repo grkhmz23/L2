@@ -66,15 +66,20 @@ const WalletContextInner: FC<{ children: ReactNode }> = ({ children }) => {
     }
   }, [routingMode, baseConnection]);
 
-  // Create SDK instance with router connection for ER-mode transactions
+  // Create SDK instance.
+  // connection is ALWAYS the base L1 connection so reads (getProgramAccounts,
+  // .fetch(), .all()) work reliably. routerConnection is only set when ER mode
+  // is active so that ER-bound transactions can opt-in via useRouter=true.
   const sdk = useMemo(() => {
     if (!wallet.publicKey || !wallet.signTransaction) return null;
 
     return new SableSdk({
       programId: new PublicKey(env.SABLE_PROGRAM_ID),
-      connection,
-      // Router connection is the same as the ER connection since we switched to router
-      routerConnection: routingMode === 'er' ? connection : undefined,
+      connection: baseConnection,
+      routerConnection:
+        routingMode === 'er'
+          ? new Connection(env.MAGIC_ROUTER_URL, 'confirmed')
+          : undefined,
       paymentsApiUrl: env.PAYMENTS_API_URL || undefined,
       wallet: {
         publicKey: wallet.publicKey,
@@ -82,7 +87,7 @@ const WalletContextInner: FC<{ children: ReactNode }> = ({ children }) => {
         signAllTransactions: wallet.signAllTransactions,
       },
     });
-  }, [wallet.publicKey, wallet.signTransaction, wallet.signAllTransactions, connection, routingMode]);
+  }, [wallet.publicKey, wallet.signTransaction, wallet.signAllTransactions, baseConnection, routingMode]);
 
   // Always-available L1 SDK for delegation/commit/withdraw flows even while UI is in ER mode.
   const solanaSdk = useMemo(() => {
