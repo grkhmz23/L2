@@ -5,48 +5,25 @@ import { useWalletContext } from '@/contexts/WalletContext';
 import { env } from '@/utils/env';
 
 export default function SettingsPage() {
-  const { routingMode, setRoutingMode, refreshUserState } = useWalletContext();
+  const { refreshUserState } = useWalletContext();
 
   return (
     <div className="space-y-6">
       <SectionHeader
         eyebrow="Configuration"
         title="Settings"
-        subtitle="Connected RPC endpoints, program ID, routing mode, and app version."
+        subtitle="Connected RPC endpoints, program ID, and app version."
       />
 
       <GlassPanel className="p-6">
         <div className="space-y-6">
-          {/* Routing mode */}
-          <div className="rounded-lg border border-white/8 bg-black/35 p-4">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Routing Mode</p>
-            <div className="mt-3 flex items-center gap-3">
-              <div className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.03] p-0.5">
-                <button
-                  onClick={() => setRoutingMode('solana')}
-                  className={`rounded-full px-4 py-1.5 text-xs font-medium transition-colors ${
-                    routingMode === 'solana'
-                      ? 'bg-white/10 text-amber-100'
-                      : 'text-zinc-400 hover:text-zinc-200'
-                  }`}
-                >
-                  Solana L1
-                </button>
-                <button
-                  onClick={() => setRoutingMode('er')}
-                  className={`rounded-full px-4 py-1.5 text-xs font-medium transition-colors ${
-                    routingMode === 'er'
-                      ? 'bg-white/10 text-amber-100'
-                      : 'text-zinc-400 hover:text-zinc-200'
-                  }`}
-                >
-                  MagicBlock ER
-                </button>
-              </div>
+          {/* Routing mode — locked to MagicBlock ER */}
+          <div className="rounded-lg border border-amber-200/10 bg-amber-200/[0.03] p-4">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-amber-200/60">Routing Mode</p>
+            <div className="mt-2 flex items-center gap-3">
+              <Pill tone="amber">MagicBlock ER</Pill>
               <span className="text-xs text-zinc-400">
-                {routingMode === 'er'
-                  ? 'Uses the Magic Router endpoint when it is configured'
-                  : 'Direct Solana base layer'}
+                Built for MagicBlock integration. All transactions route through the Magic Router.
               </span>
             </div>
           </div>

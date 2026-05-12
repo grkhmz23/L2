@@ -50,7 +50,8 @@ export const useWalletContext = () => {
 const WalletContextInner: FC<{ children: ReactNode }> = ({ children }) => {
   const { connection: baseConnection } = useConnection();
   const wallet = useWallet();
-  const [routingMode, setRoutingMode] = useState<RoutingMode>('solana');
+  // Default to MagicBlock ER mode — this project is built for MagicBlock integration
+  const [routingMode, setRoutingMode] = useState<RoutingMode>('er');
   const [isLoading, setIsLoading] = useState(false);
   const [refreshNonce, setRefreshNonce] = useState(0);
 

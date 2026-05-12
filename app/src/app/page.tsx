@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { WalletMultiButton } from '@/contexts/WalletContext';
-import { GlassPanel, LuxuryButton, Pill, SableLogo } from '@/components/ui/luxury';
+import { GlassPanel, LuxuryButton, Pill } from '@/components/ui/luxury';
 import { useWallet } from '@solana/wallet-adapter-react';
 
 export default function LandingPage() {
@@ -15,7 +15,8 @@ export default function LandingPage() {
 
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1500px] flex-col px-4 py-6 md:px-8 lg:px-12">
         <nav className="flex items-center justify-between">
-          <SableLogo />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/sable-logo.png" alt="Sable" className="h-8 w-auto object-contain md:h-10" />
 
           <div className="flex items-center gap-3">
             <Link
@@ -45,14 +46,14 @@ export default function LandingPage() {
               agent treasury.
             </h2>
             <p className="mt-5 max-w-2xl text-sm leading-relaxed text-zinc-400 md:text-base">
-              Sable is a Solana agent treasury prototype with direct Anchor vault flows,
-              MagicBlock ER delegation hooks, hierarchical treasuries, sealed-bid auctions, and an
-              x402 demo path.
+              Sable is a privacy-first agent treasury built on Solana and MagicBlock.
+              Vault-backed balances, hierarchical agents with spend policies, sealed-bid auctions,
+              and x402 pay-per-request — all powered by MagicBlock Ephemeral Rollups.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-2">
-              <Pill tone="amber">Hierarchical agent treasuries</Pill>
-              <Pill>ER hooks available</Pill>
+              <Pill tone="amber">MagicBlock ER Native</Pill>
+              <Pill>Hierarchical agent treasuries</Pill>
               <Pill>Sealed-bid task auctions</Pill>
               <Pill>x402 pay-per-request</Pill>
             </div>

@@ -132,15 +132,12 @@ export function SableMark({ className, size = 36 }: SableMarkProps) {
 
 export function SableLogo({ className }: { className?: string }) {
   return (
-    <div className={cn('flex min-w-0 items-center gap-3', className)}>
-      <SableMark />
-      <div className="min-w-0">
-        <h1 className="truncate text-base text-white">Sable</h1>
-        <p className="truncate text-[9px] uppercase tracking-[0.25em] text-zinc-500">
-          Agent Treasury
-        </p>
-      </div>
-    </div>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src="/sable-logo.png"
+      alt="Sable"
+      className={cn('h-8 w-auto object-contain md:h-9', className)}
+    />
   );
 }
 

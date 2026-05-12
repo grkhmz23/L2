@@ -241,7 +241,7 @@ export function AgentChatPanel({ compact = false }: { compact?: boolean }) {
     return [
       `Wallet: ${context.walletPubkey ? truncateAddress(context.walletPubkey, 6, 6) : 'not connected'}`,
       `Treasury: ${context.userStateExists ? 'found' : 'missing'}`,
-      `Mode: ${context.routingMode === 'er' ? 'MagicBlock ER' : 'Solana L1'}`,
+      `Mode: MagicBlock ER`,
       `Assets: ${context.knownMints.length}`,
     ];
   }, [context]);
@@ -629,7 +629,7 @@ function AgentStateInspector({
           <DetailRow label="RPC" value={context.settings.solanaRpcUrl} />
           <DetailRow label="USDC Mint" value={context.usdcMint} />
           <DetailRow label="wSOL Mint" value={context.wsolMint} />
-          <DetailRow label="Route" value={context.routingMode === 'er' ? 'MagicBlock ER' : 'Solana L1'} />
+          <DetailRow label="Route" value="MagicBlock ER" />
           <DetailRow label="MagicBlock available" value={context.magicBlockAvailable ? 'yes' : 'no'} />
         </div>
       ) : null}

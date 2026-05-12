@@ -49,7 +49,7 @@ describe('frontend smoke', () => {
 
   it('renders the sidebar shell navigation', () => {
     render(React.createElement(Sidebar));
-    expect(screen.getByText('Agent Treasury')).toBeInTheDocument();
+    expect(screen.getByAltText('Sable')).toBeInTheDocument();
     expect(screen.getByText('Treasury')).toBeInTheDocument();
     expect(screen.getByText('Agents')).toBeInTheDocument();
     expect(screen.getByText('Settings')).toBeInTheDocument();

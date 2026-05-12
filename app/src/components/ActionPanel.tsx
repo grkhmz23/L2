@@ -293,16 +293,6 @@ function SendForm() {
         throw new Error('No valid recipients parsed');
       }
 
-      if (routingMode !== 'er') {
-        setRouteSummary({ total: items.length, internal: items.length, fallback: 0 });
-        setStage('er_send');
-        const results = await sdk.transferBatchChunked(mintPubkey, items, 15);
-        toast.success(`Sent to ${items.length} recipients in ${results.length} transaction(s)`);
-        setRecipients('');
-        setStage('done');
-        return;
-      }
-
       if (!solanaSdk || !publicKey) {
         throw new Error('L1 SDK unavailable for MagicBlock fallback flow');
       }
@@ -388,19 +378,17 @@ function SendForm() {
     }
   };
 
-  const showTelemetry = routingMode === 'er' && (stage !== 'idle' || routeSummary);
+  const showTelemetry = stage !== 'idle' || routeSummary;
 
   return (
     <div className="space-y-6">
       <SectionHeader
         eyebrow="Execution Console"
         title="Execute Transfer"
-        subtitle="Batch sends are routed by mode. In ER mode, delegated recipients use internal transfers while non-delegated recipients fall back to L1 vault settlement when configured."
+        subtitle="Batch sends route through MagicBlock ER. Delegated recipients use internal transfers while non-delegated recipients fall back to L1 vault settlement."
         action={
           <div className="flex items-center gap-2">
-            <Pill tone={routingMode === 'er' ? 'amber' : 'default'}>
-              {routingMode === 'er' ? 'MagicBlock ER' : 'Solana L1'}
-            </Pill>
+            <Pill tone="amber">MagicBlock ER</Pill>
           </div>
         }
       />
