@@ -28,41 +28,102 @@ export function SableMark({ className, size = 36 }: SableMarkProps) {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
+      {/* Outer shield / vault badge */}
       <rect
-        x="4"
-        y="4"
-        width="40"
-        height="40"
-        rx="10"
-        fill="url(#sable-mark-bg)"
-        stroke="url(#sable-mark-stroke)"
+        x="3"
+        y="3"
+        width="42"
+        height="42"
+        rx="12"
+        fill="url(#sable-bg)"
+        stroke="url(#sable-border)"
+        strokeWidth="1"
+      />
+
+      {/* Inner bevel highlight */}
+      <rect
+        x="4.5"
+        y="4.5"
+        width="39"
+        height="39"
+        rx="10.5"
+        stroke="url(#sable-inner-glow)"
+        strokeWidth="0.5"
+        opacity="0.6"
+      />
+
+      {/* Top arc of S — ivory/cream ribbon */}
+      <path
+        d="M14 18.5C14 14.5 17.5 12 24 12C30.5 12 34 14.2 34 17.5C34 20.5 31 22 26 22.5C21 23 18 24 18 27C18 29.5 20.5 31 24 31"
+        stroke="url(#sable-ribbon-top)"
+        strokeWidth="3.2"
+        strokeLinecap="round"
+        fill="none"
+      />
+
+      {/* Bottom arc of S — gold ribbon */}
+      <path
+        d="M34 29.5C34 33.5 30.5 36 24 36C17.5 36 14 33.8 14 30.5C14 27.5 17 26 22 25.5C27 25 30 24 30 21C30 18.5 27.5 17 24 17"
+        stroke="url(#sable-ribbon-bottom)"
+        strokeWidth="3.2"
+        strokeLinecap="round"
+        fill="none"
+      />
+
+      {/* Center diamond / vault seal accent */}
+      <path
+        d="M24 15.5L26.5 20.5L24 22L21.5 20.5Z"
+        fill="url(#sable-diamond)"
+        opacity="0.9"
       />
       <path
-        d="M32.5 14.4C29.4 12.6 24.9 12 21.4 13.2C17.8 14.4 15.8 16.8 16 19.4C16.3 22.7 19.7 23.7 24.2 24.4C28.1 25 30 25.7 30.1 27.6C30.2 29.4 28.6 30.8 25.8 31.3C22.3 31.9 18.4 30.9 15.4 28.8"
-        stroke="#F8F1D2"
-        strokeWidth="3"
-        strokeLinecap="round"
+        d="M24 32.5L21.5 27.5L24 26L26.5 27.5Z"
+        fill="url(#sable-diamond)"
+        opacity="0.9"
       />
-      <path
-        d="M15.5 34.2C19.1 36.5 25.3 37.1 29.8 35.4C34.1 33.8 36.3 30.9 36 27.4C35.7 23.2 32 21.4 25.4 20.4C22.2 19.9 21 19.4 20.9 18.3C20.8 17.1 22 16.3 24 16C26.3 15.7 29 16.2 31.5 17.5"
-        stroke="url(#sable-mark-gold)"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      <circle cx="35" cy="13" r="2" fill="#FCF6BA" opacity="0.85" />
+
+      {/* Tiny seal dot */}
+      <circle cx="24" cy="24" r="1.2" fill="#FCF6BA" opacity="0.85" />
+
       <defs>
-        <linearGradient id="sable-mark-bg" x1="6" y1="6" x2="42" y2="42" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#191816" />
-          <stop offset="1" stopColor="#050505" />
+        {/* Background gradient — deep graphite */}
+        <radialGradient id="sable-bg" cx="24" cy="24" r="22" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#1e1c1a" />
+          <stop offset="60%" stopColor="#12100e" />
+          <stop offset="100%" stopColor="#0a0908" />
+        </radialGradient>
+
+        {/* Border gradient — warm metallic gold */}
+        <linearGradient id="sable-border" x1="4" y1="4" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#8C6B22" stopOpacity="0.6" />
+          <stop offset="50%" stopColor="#FCF6BA" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="#8C6B22" stopOpacity="0.6" />
         </linearGradient>
-        <linearGradient id="sable-mark-stroke" x1="4" y1="4" x2="44" y2="44" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#FCF6BA" stopOpacity="0.55" />
-          <stop offset="1" stopColor="#8C6B22" stopOpacity="0.35" />
+
+        {/* Inner glow — subtle amber halo */}
+        <linearGradient id="sable-inner-glow" x1="24" y1="4" x2="24" y2="44" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#FCF6BA" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="#BF953F" stopOpacity="0.05" />
         </linearGradient>
-        <linearGradient id="sable-mark-gold" x1="14" y1="18" x2="37" y2="33" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#BF953F" />
-          <stop offset="0.52" stopColor="#FCF6BA" />
-          <stop offset="1" stopColor="#B38728" />
+
+        {/* Top ribbon — ivory to pale gold */}
+        <linearGradient id="sable-ribbon-top" x1="14" y1="12" x2="34" y2="31" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#F8F1D2" />
+          <stop offset="55%" stopColor="#FCF6BA" />
+          <stop offset="100%" stopColor="#D4B87A" />
+        </linearGradient>
+
+        {/* Bottom ribbon — rich gold to deep amber */}
+        <linearGradient id="sable-ribbon-bottom" x1="34" y1="36" x2="14" y2="17" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#B38728" />
+          <stop offset="45%" stopColor="#BF953F" />
+          <stop offset="100%" stopColor="#FCF6BA" />
+        </linearGradient>
+
+        {/* Diamond accent — bright gold */}
+        <linearGradient id="sable-diamond" x1="21" y1="15" x2="27" y2="33" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#FCF6BA" />
+          <stop offset="100%" stopColor="#BF953F" />
         </linearGradient>
       </defs>
     </svg>
