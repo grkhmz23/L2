@@ -18,6 +18,9 @@ const DEFAULT_DELEGATION_PROGRAM = new PublicKey(
 
 const MAGIC_PROGRAM = new PublicKey('Magic11111111111111111111111111111111111111');
 const MAGIC_CONTEXT = new PublicKey('MagicContext1111111111111111111111111111111');
+const PERMISSION_PROGRAM = new PublicKey(
+  'ACLseoPoyC3cBqoUtkbjZ4aDrkurZW86v19pXz2XQnp1'
+);
 
 export class DelegationModule {
   constructor(private client: SableClient) {}
@@ -83,6 +86,7 @@ export class DelegationModule {
         delegationRecordUserState,
         delegationMetadataUserState,
         userState,
+        permissionProgram: PERMISSION_PROGRAM,
         ownerProgram: this.client.program.programId,
         delegationProgram: DEFAULT_DELEGATION_PROGRAM,
         systemProgram: SystemProgram.programId,
@@ -127,9 +131,9 @@ export class DelegationModule {
         payer: owner,
         owner,
         userState,
+        permissionProgram: PERMISSION_PROGRAM,
         magicProgram: MAGIC_PROGRAM,
         magicContext: MAGIC_CONTEXT,
-        systemProgram: SystemProgram.programId,
       })
       .remainingAccounts(remainingAccounts)
       .transaction();

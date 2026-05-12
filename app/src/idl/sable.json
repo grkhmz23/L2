@@ -1188,6 +1188,12 @@
           "writable": true
         },
         {
+          "name": "permission_program",
+          "docs": [
+            "MagicBlock PER permission program"
+          ]
+        },
+        {
           "name": "owner_program"
         },
         {
@@ -1236,6 +1242,12 @@
         {
           "name": "user_state",
           "writable": true
+        },
+        {
+          "name": "permission_program",
+          "docs": [
+            "MagicBlock PER permission program"
+          ]
         },
         {
           "name": "magic_program"
