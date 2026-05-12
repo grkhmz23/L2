@@ -30,9 +30,9 @@ const proposal: AgentProposal = {
   blocked: false,
   accountsTouched: ['Wallet: 11111111111111111111111111111111'],
   prerequisites: [],
-  warnings: ['Wallet approval required.'],
-  estimatedNextStep: 'Approve and sign.',
-  simulation: { available: false, summary: 'Simulation unavailable for this action.' },
+  warnings: ['Sable Agent only prepares this action. Your wallet must approve and sign.'],
+  estimatedNextStep: 'Review the proposal, then click Approve & open wallet to sign.',
+  simulation: { available: false, summary: 'Transaction simulation runs inside your wallet before you sign.' },
   plan: {
     actionType: 'DEPOSIT',
     intent: { actionType: 'DEPOSIT', confidence: 0.9, reason: 'test' },
@@ -56,14 +56,26 @@ describe('agent chat UI', () => {
     expect(screen.getByText('Prepare Proposal')).toBeInTheDocument();
   });
 
+  it('renders quick action chips', () => {
+    render(React.createElement(AgentChatPanel));
+    expect(screen.getByText('Create my treasury')).toBeInTheDocument();
+    expect(screen.getByText('Add USDC')).toBeInTheDocument();
+    expect(screen.getByText('Deposit tokens')).toBeInTheDocument();
+    expect(screen.getByText('Send tokens')).toBeInTheDocument();
+    expect(screen.getByText('Batch send')).toBeInTheDocument();
+    expect(screen.getByText('Withdraw')).toBeInTheDocument();
+    expect(screen.getByText('Commit / Undelegate')).toBeInTheDocument();
+    expect(screen.getByText('Show my settings')).toBeInTheDocument();
+  });
+
   it('renders proposal cards', () => {
     render(React.createElement(AgentProposalCard, { proposal, onApprove: vi.fn(), onReject: vi.fn(), isExecuting: false }));
-    expect(screen.getByText('Deposit 1 USDC to the vault')).toBeInTheDocument();
-    expect(screen.getByText('Approve & Sign')).toBeInTheDocument();
+    expect(screen.getByText('Deposit 1 USDC into your Sable vault')).toBeInTheDocument();
+    expect(screen.getByText('Approve & open wallet')).toBeInTheDocument();
     expect(screen.getByText('Reject')).toBeInTheDocument();
   });
 
-  it('Reject clears a proposal in parent state', () => {
+  it('reject clears a proposal in parent state', () => {
     function Harness() {
       const [current, setCurrent] = React.useState<AgentProposal | null>(proposal);
       return current ? (
@@ -82,7 +94,7 @@ describe('agent chat UI', () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('should not be called'));
 
     render(React.createElement(AgentChatPanel));
-    fireEvent.change(screen.getByPlaceholderText('Send 0.1 USDC to 7abc...'), {
+    fireEvent.change(screen.getByPlaceholderText(/Try: Deposit 1 USDC/), {
       target: { value: 'What is Bitcoin?' },
     });
     fireEvent.click(screen.getByText('Prepare Proposal'));
@@ -90,7 +102,7 @@ describe('agent chat UI', () => {
     await waitFor(() => {
       expect(screen.getByText(/I can only help with Sable treasury actions inside this app/)).toBeInTheDocument();
     });
-    expect(screen.queryByText('Approve & Sign')).not.toBeInTheDocument();
+    expect(screen.queryByText('Approve & open wallet')).not.toBeInTheDocument();
     expect(fetchSpy).not.toHaveBeenCalled();
 
     fetchSpy.mockRestore();
@@ -100,7 +112,7 @@ describe('agent chat UI', () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('should not be called'));
 
     render(React.createElement(AgentChatPanel));
-    fireEvent.change(screen.getByPlaceholderText('Send 0.1 USDC to 7abc...'), {
+    fireEvent.change(screen.getByPlaceholderText(/Try: Deposit 1 USDC/), {
       target: { value: 'Hello' },
     });
     fireEvent.click(screen.getByText('Prepare Proposal'));
@@ -108,9 +120,19 @@ describe('agent chat UI', () => {
     await waitFor(() => {
       expect(screen.getByText(/Hello, I am Sable Agent/)).toBeInTheDocument();
     });
-    expect(screen.queryByText('Approve & Sign')).not.toBeInTheDocument();
+    expect(screen.queryByText('Approve & open wallet')).not.toBeInTheDocument();
     expect(fetchSpy).not.toHaveBeenCalled();
 
     fetchSpy.mockRestore();
+  });
+
+  it('advanced details are collapsed by default', () => {
+    render(React.createElement(AgentChatPanel));
+    expect(screen.getByText('Advanced')).toBeInTheDocument();
+  });
+
+  it('wallet-signing message appears after approve click', () => {
+    render(React.createElement(AgentProposalCard, { proposal, onApprove: vi.fn(), onReject: vi.fn(), isExecuting: true }));
+    expect(screen.getByText('Open your wallet…')).toBeInTheDocument();
   });
 });

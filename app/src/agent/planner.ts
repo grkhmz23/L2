@@ -60,15 +60,15 @@ export function deterministicPlan(input: string, context?: Partial<AgentToolCont
     return normalizeAgentPlan({ actionType: 'SHOW_SETTINGS', summary: 'Show Settings, RPC, program, and router configuration' }, rawText);
   }
 
-  if (/(explain|show|what).*(balance|balances)|balances?/i.test(rawText) && !/(add|deposit|send|withdraw)/i.test(rawText)) {
+  if (/(explain|show|what).*(balance|balances)|balances?|\bwhat do i have\b/i.test(rawText) && !/(add|deposit|send|withdraw)/i.test(rawText)) {
     return normalizeAgentPlan({ actionType: 'EXPLAIN_BALANCES', summary: 'Explain current treasury balances' }, rawText);
   }
 
-  if (/(create|join).*(treasury|account|sable)|\bjoin\b/i.test(rawText)) {
+  if (/(create|join).*(treasury|account|sable)|\bjoin\b|\bstart\b|\bget started\b|\bcreate account\b|\bmake treasury\b/i.test(rawText)) {
     return normalizeAgentPlan({ actionType: 'CREATE_TREASURY', summary: 'Create your Sable treasury UserState' }, rawText);
   }
 
-  if (/(complete|finish).*(setup)|setup/i.test(rawText)) {
+  if (/(complete|finish).*(setup)|\bsetup\b/i.test(rawText)) {
     return normalizeAgentPlan({ actionType: 'COMPLETE_SETUP', summary: 'Complete setup with the default wSOL balance' }, rawText);
   }
 
@@ -81,29 +81,45 @@ export function deterministicPlan(input: string, context?: Partial<AgentToolCont
     }, rawText);
   }
 
-  if (/(add|track).*(mint|asset|usdc|wsol)|^add\s+[a-z0-9]+/i.test(rawText)) {
+  if (/(add|track|enable|use).*(mint|asset|usdc|wsol)|^add\s+[a-z0-9]+/i.test(rawText)) {
+    const missing = mintInfo.mint ? [] : ['mint'];
+    if (missing.length > 0) {
+      return buildFollowUp(rawText, 'Which asset would you like to add? For example, USDC or wSOL.');
+    }
     return normalizeAgentPlan({
       actionType: 'ADD_MINT',
       mint: mintInfo.mint,
       mintSymbol: mintInfo.symbol,
       summary: `Add ${mintInfo.symbol || 'asset'} to your Sable treasury`,
-      missingFields: mintInfo.mint ? [] : ['mint'],
+      missingFields: [],
     }, rawText);
   }
 
-  if (/deposit|fund|top up|top-up/i.test(rawText)) {
+  if (/deposit|fund|top up|top-up|put in|put\s+\d/i.test(rawText)) {
+    const missing = missingFields(['amount', 'mint'], { amount, mint: mintInfo.mint });
+    if (missing.length > 0) {
+      return buildFollowUp(rawText, `How much do you want to deposit${mintInfo.symbol ? ` in ${mintInfo.symbol}` : ''}, and which asset?`);
+    }
     return normalizeAgentPlan({
       actionType: 'DEPOSIT',
       amount,
       mint: mintInfo.mint,
       mintSymbol: mintInfo.symbol,
       summary: `Deposit ${amount || ''} ${mintInfo.symbol || 'tokens'} to the vault`.trim(),
-      missingFields: missing(['amount', 'mint'], { amount, mint: mintInfo.mint }),
+      missingFields: [],
     }, rawText);
   }
 
-  if (/batch|these addresses|recipients|addresses:/i.test(rawText) && /(send|transfer)/i.test(rawText)) {
+  if ((/batch|these addresses|recipients|addresses:/i.test(rawText) && /(send|transfer|pay)/i.test(rawText)) || /airdrop|pay list/i.test(rawText)) {
     const recipients = extractRecipients(rawText, amount);
+    const missing = missingFields(['amount', 'mint', 'recipients'], {
+      amount: recipients.some((r) => r.amount) ? 'per-row' : amount,
+      mint: mintInfo.mint,
+      recipients: recipients.length ? 'yes' : '',
+    });
+    if (missing.length > 0) {
+      return buildFollowUp(rawText, `For a batch send, please provide the amount, asset, and wallet addresses.`);
+    }
     return normalizeAgentPlan({
       actionType: 'BATCH_TRANSFER',
       amount,
@@ -111,15 +127,15 @@ export function deterministicPlan(input: string, context?: Partial<AgentToolCont
       mintSymbol: mintInfo.symbol,
       recipients,
       summary: `Prepare batch send to ${recipients.length} recipient(s)`,
-      missingFields: missing(['amount', 'mint', 'recipients'], {
-        amount: recipients.some((r) => r.amount) ? 'per-row' : amount,
-        mint: mintInfo.mint,
-        recipients: recipients.length ? 'yes' : '',
-      }),
+      missingFields: [],
     }, rawText);
   }
 
   if (/(external|vault send|send.*external)/i.test(rawText)) {
+    const missing = missingFields(['amount', 'mint', 'recipient'], { amount, mint: mintInfo.mint, recipient: addresses[0] });
+    if (missing.length > 0) {
+      return buildFollowUp(rawText, `How much${mintInfo.symbol ? ` ${mintInfo.symbol}` : ''} do you want to send externally, and to which wallet address?`);
+    }
     return normalizeAgentPlan({
       actionType: 'EXTERNAL_SEND',
       amount,
@@ -127,12 +143,16 @@ export function deterministicPlan(input: string, context?: Partial<AgentToolCont
       mintSymbol: mintInfo.symbol,
       recipient: addresses[0],
       recipients: addresses[0] ? [{ address: addresses[0], amount }] : [],
-      summary: `Prepare external vault send${addresses[0] ? ` to ${addresses[0]}` : ''}`,
-      missingFields: missing(['amount', 'mint', 'recipient'], { amount, mint: mintInfo.mint, recipient: addresses[0] }),
+      summary: `Prepare external vault send${addresses[0] ? ` to ${truncateAddress(addresses[0])}` : ''}`,
+      missingFields: [],
     }, rawText);
   }
 
   if (/(send|transfer|pay)\b/i.test(rawText)) {
+    const missing = missingFields(['amount', 'mint', 'recipient'], { amount, mint: mintInfo.mint, recipient: addresses[0] });
+    if (missing.length > 0) {
+      return buildFollowUp(rawText, `How much${mintInfo.symbol ? ` ${mintInfo.symbol}` : ''} do you want to send, and to which wallet address?`);
+    }
     return normalizeAgentPlan({
       actionType: 'INTERNAL_TRANSFER',
       amount,
@@ -140,12 +160,12 @@ export function deterministicPlan(input: string, context?: Partial<AgentToolCont
       mintSymbol: mintInfo.symbol,
       recipient: addresses[0],
       recipients: addresses[0] ? [{ address: addresses[0], amount }] : [],
-      summary: `Prepare internal send${addresses[0] ? ` to ${addresses[0]}` : ''}`,
-      missingFields: missing(['amount', 'mint', 'recipient'], { amount, mint: mintInfo.mint, recipient: addresses[0] }),
+      summary: `Prepare internal send${addresses[0] ? ` to ${truncateAddress(addresses[0])}` : ''}`,
+      missingFields: [],
     }, rawText);
   }
 
-  if (/commit|undelegate|finali[sz]e/i.test(rawText)) {
+  if (/commit|undelegate|finali[sz]e|save state|exit fast mode/i.test(rawText)) {
     return normalizeAgentPlan({
       actionType: 'COMMIT_UNDELEGATE',
       mint: mintInfo.mint,
@@ -154,7 +174,7 @@ export function deterministicPlan(input: string, context?: Partial<AgentToolCont
     }, rawText);
   }
 
-  if (/delegate|magicblock|er\b/i.test(rawText)) {
+  if (/delegate|magicblock|er\b|make.*fast|use magicblock/i.test(rawText)) {
     return normalizeAgentPlan({
       actionType: 'DELEGATE',
       mint: mintInfo.mint,
@@ -164,7 +184,11 @@ export function deterministicPlan(input: string, context?: Partial<AgentToolCont
     }, rawText);
   }
 
-  if (/withdraw|cash out|settle/i.test(rawText)) {
+  if (/withdraw|cash out|settle|take out|take.*back.*wallet|move back to wallet/i.test(rawText)) {
+    const missing = missingFields(['amount', 'mint'], { amount, mint: mintInfo.mint });
+    if (missing.length > 0) {
+      return buildFollowUp(rawText, `How much${mintInfo.symbol ? ` ${mintInfo.symbol}` : ''} do you want to withdraw?`);
+    }
     return normalizeAgentPlan({
       actionType: 'WITHDRAW',
       amount,
@@ -172,7 +196,7 @@ export function deterministicPlan(input: string, context?: Partial<AgentToolCont
       mintSymbol: mintInfo.symbol,
       destinationAta: addresses[0],
       summary: `Withdraw ${amount || ''} ${mintInfo.symbol || 'tokens'} to wallet`.trim(),
-      missingFields: missing(['amount', 'mint'], { amount, mint: mintInfo.mint }),
+      missingFields: [],
     }, rawText);
   }
 
@@ -240,6 +264,19 @@ function uniqueRecipients(recipients: AgentTransferRecipient[]) {
   });
 }
 
-function missing(names: string[], values: Record<string, string | undefined>) {
+function missingFields(names: string[], values: Record<string, string | undefined>) {
   return names.filter((name) => !values[name]);
+}
+
+function buildFollowUp(rawText: string, question: string): AgentActionPlan {
+  return normalizeAgentPlan({
+    actionType: 'CLARIFY_SABLE_ACTION',
+    summary: question,
+    requiresTransaction: false,
+  }, rawText);
+}
+
+function truncateAddress(value: string) {
+  if (value.length <= 12) return value;
+  return `${value.slice(0, 6)}...${value.slice(-4)}`;
 }

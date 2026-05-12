@@ -22,10 +22,20 @@ export type AgentProvider = 'deepseek' | 'gemini' | 'groq' | 'none' | 'determini
 
 export type AgentDomain = 'sable_protocol' | 'out_of_scope' | 'ambiguous';
 
+export type AgentMessageCategory =
+  | 'info'
+  | 'prerequisite'
+  | 'proposal'
+  | 'warning'
+  | 'success'
+  | 'rejected'
+  | 'error';
+
 export interface AgentMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
+  category?: AgentMessageCategory;
   createdAt: string;
 }
 
@@ -114,6 +124,12 @@ export interface AgentProviderResponse {
   model: string;
   plan: AgentActionPlan;
   usedFallback: boolean;
+}
+
+export interface AgentExecutionStep {
+  label: string;
+  state: 'pending' | 'active' | 'done' | 'failed';
+  active: boolean;
 }
 
 export interface AgentScopeResult {

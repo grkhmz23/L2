@@ -10,50 +10,50 @@ export function buildAgentProposal(plan: AgentActionPlan, context: AgentToolCont
     prerequisites.push('This request is outside Sable protocol action scope.');
   }
   if (plan.requiresTransaction && !context.walletConnected) {
-    prerequisites.push('Connect a wallet before preparing a transaction.');
+    prerequisites.push('Please connect your wallet first. I can prepare the next step after that.');
   }
   if (requiresTreasury(plan) && !context.userStateExists) {
-    prerequisites.push('Create your Sable treasury first.');
+    prerequisites.push('You need a Sable treasury before using assets. I can prepare treasury setup for you.');
   }
   if (plan.missingFields.length > 0) {
     prerequisites.push(`Missing required field(s): ${plan.missingFields.join(', ')}.`);
   }
   if (plan.amount && !isPositiveAmount(plan.amount)) {
-    prerequisites.push('Enter a positive amount.');
+    prerequisites.push('Please enter a positive amount.');
   }
   for (const recipient of plan.recipients || []) {
     if (!isValidPublicKey(recipient.address)) {
-      prerequisites.push(`Invalid recipient address: ${recipient.address}`);
+      prerequisites.push(`This recipient address doesn't look right: ${recipient.address}. Please check and try again.`);
     }
   }
   if (plan.recipient && !isValidPublicKey(plan.recipient)) {
-    prerequisites.push(`Invalid recipient address: ${plan.recipient}`);
+    prerequisites.push(`This recipient address doesn't look right. Please check and try again.`);
   }
   if (plan.mint && !isValidPublicKey(plan.mint)) {
-    prerequisites.push(`Invalid mint address: ${plan.mint}`);
+    prerequisites.push(`This asset address doesn't look right. Please check and try again.`);
   }
   if (plan.destinationAta && !isValidPublicKey(plan.destinationAta)) {
-    prerequisites.push('Invalid destination ATA.');
+    prerequisites.push('This destination address doesn\'t look right. Please check and try again.');
   }
   if ((plan.actionType === 'DELEGATE' || plan.route === 'MagicBlock Router' || plan.route === 'ER') && !context.magicBlockAvailable) {
-    prerequisites.push('MagicBlock router/PER configuration is missing.');
+    prerequisites.push('Fast MagicBlock mode is not configured in this environment. You can still use direct Sable vault actions.');
   }
   if (plan.actionType === 'WITHDRAW') {
     const mint = plan.mint;
     const delegated = context.knownMints.some((m) => (!mint || m.mint === mint) && m.isDelegated);
     if (delegated) {
-      prerequisites.push('This balance appears delegated. Commit / undelegate before withdrawing.');
+      prerequisites.push('Your treasury is still in fast MagicBlock mode. I\'ll prepare Commit / Undelegate first, then you can withdraw.');
     }
   }
 
   if (plan.actionType === 'EXTERNAL_SEND') {
-    warnings.push('External vault sends require committed L1 state and recipient token accounts may be created.');
+    warnings.push('External sends move tokens from the Sable vault to the recipient\'s wallet on Solana. This uses your L1 balance and may create a new token account for the recipient.');
   }
   if (plan.actionType === 'BATCH_TRANSFER') {
-    warnings.push('Batch sends may require multiple wallet approvals when chunked.');
+    warnings.push('Batch sends may require multiple wallet approvals when chunked into several transactions.');
   }
   if (plan.requiresTransaction) {
-    warnings.push('Sable Agent only prepares this action. Your wallet must approve and sign.');
+    warnings.push('Sable Agent only prepares this action. Your wallet must approve and sign. The agent cannot sign for you.');
   }
 
   const blocked =
@@ -72,14 +72,14 @@ export function buildAgentProposal(plan: AgentActionPlan, context: AgentToolCont
     riskLevel,
     blocked,
     estimatedNextStep: blocked
-      ? 'Resolve prerequisites, then ask Sable Agent to prepare the action again.'
+      ? 'Resolve the items above, then ask me to prepare the action again.'
       : plan.requiresTransaction
-      ? 'Review the proposal, then click Approve & Sign to open your wallet.'
+      ? 'Review the proposal, then click Approve & open wallet to sign.'
       : 'Review the read-only response.',
     simulation: {
       available: false,
       summary: plan.requiresTransaction
-        ? 'Simulation unavailable for this action in the chat proposal. Wallet and RPC preflight still run during signing.'
+        ? 'Transaction simulation runs inside your wallet before you sign. I cannot simulate on your behalf.'
         : 'No transaction simulation required for read-only actions.',
     },
   };

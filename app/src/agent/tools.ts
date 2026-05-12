@@ -120,6 +120,42 @@ export async function executeAgentPlan({
   }
 }
 
+export function formatAgentError(error: any): { friendly: string; raw?: string } {
+  const message = error?.message || 'Action failed.';
+  const lower = message.toLowerCase();
+
+  if (lower.includes('user rejected') || lower.includes('user cancel') || lower.includes('rejected') || lower.includes('declined')) {
+    return { friendly: 'You rejected the wallet request. No transaction was sent.', raw: message };
+  }
+  if (lower.includes('insufficient') && lower.includes('sol')) {
+    return { friendly: 'You don\'t have enough SOL for gas. Please add SOL to your wallet first.', raw: message };
+  }
+  if (lower.includes('mint is required') || lower.includes('missing required field')) {
+    return { friendly: 'An asset is missing for this action. Please specify which token you want to use.', raw: message };
+  }
+  if (lower.includes('recipient') && (lower.includes('missing') || lower.includes('required'))) {
+    return { friendly: 'A recipient address is missing. Please provide the wallet address you want to send to.', raw: message };
+  }
+  if (lower.includes('token account') || lower.includes('associated token account')) {
+    return { friendly: 'A required token account is missing. The app may need to create it first, or the asset may not be added yet.', raw: message };
+  }
+  if (lower.includes('simulation') && lower.includes('failed')) {
+    return { friendly: 'The transaction simulation failed. This usually means the action cannot succeed right now. Please check your balances and settings.', raw: message };
+  }
+  if (lower.includes('rpc') || lower.includes('network') || lower.includes('fetch') || lower.includes('timeout')) {
+    return { friendly: 'There was a network error connecting to Solana. Please check your connection and try again.', raw: message };
+  }
+  if (lower.includes('program') && lower.includes('error')) {
+    return { friendly: 'The on-chain program returned an error. Your transaction was not processed.', raw: message };
+  }
+  if (lower.includes('blocked') || lower.includes('prerequisite')) {
+    return { friendly: message, raw: message };
+  }
+
+  const short = message.length > 200 ? `${message.slice(0, 197)}...` : message;
+  return { friendly: short, raw: message };
+}
+
 function requireMint(mint?: string) {
   if (!mint) throw new Error('Mint is required.');
   return new PublicKey(mint);
@@ -151,11 +187,11 @@ function success(actionType: AgentExecutionResult['actionType'], signature: stri
 function explainBalances(context: AgentToolContext) {
   if (context.knownMints.length === 0) {
     return context.userStateExists
-      ? 'Treasury exists, but no tracked balances were found. Add USDC, wSOL, or another mint first.'
+      ? 'Your treasury exists, but no tracked balances were found. Add USDC, wSOL, or another asset first.'
       : 'No treasury was found for this wallet. Create your treasury first.';
   }
   return context.knownMints
-    .map((m) => `${m.symbol}: ${m.balanceRaw || '0'} raw units${m.isDelegated ? ' (delegated)' : ''}`)
+    .map((m) => `${m.symbol}: ${m.balanceRaw || '0'} raw units${m.isDelegated ? ' (fast mode)' : ''}`)
     .join('\n');
 }
 

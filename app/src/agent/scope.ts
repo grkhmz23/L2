@@ -76,7 +76,7 @@ export function buildOutOfScopePlan(message: string) {
   };
 }
 
-export function buildClarificationPlan(message: string) {
+export function buildClarificationPlan(message: string, customSummary?: string) {
   const scope = classifySableScope(message);
   const isGreeting = scope.reason === 'Greeting';
   return {
@@ -87,7 +87,7 @@ export function buildClarificationPlan(message: string) {
       confidence: 1,
       reason: 'Ambiguous request needs Sable action clarification',
     },
-    summary: isGreeting ? SABLE_GREETING : SABLE_SCOPE_CLARIFICATION,
+    summary: customSummary || (isGreeting ? SABLE_GREETING : SABLE_SCOPE_CLARIFICATION),
     route: 'Read only' as const,
     requiresTransaction: false,
     rawText: message,
